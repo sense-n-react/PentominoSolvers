@@ -1,0 +1,192 @@
+#!/usr/bin/env ruby
+# -*- coding:utf-8 -*-
+
+require 'optparse'
+
+PROG_LIST = { Ruby:       :rb,          Python:     :py,
+              Lua:        :lua,         Squirrel:   :nut,
+              Julia:      :jl,          JavaScript: :js,
+              TypeScript: :ts,          Groovy:     :groovy,
+              Perl:       :pl,          Awk:        :awk,
+              Php:        :php,
+              C:          :c,           Cpp:        :cpp,
+              Cs:         :cs,          Java:       :java,
+              Kotlin:     :kt,          Go:         :go,
+              Rust:       :rs,          Swift:      :swift,
+              Lisp:       :lisp,
+            }
+
+exit unless ARGV.options {|opt|
+    opt.banner =<<EOT
+Usage:  #{File.basename(__FILE__)} OPTION... PROG...
+Execute PENTOMINO Solvers written in various programming languages.
+
+PROG = #{PROG_LIST.keys[0,7].join(', ')}
+       #{PROG_LIST.keys[7..-1].join(', ')}
+EOT
+  opt.on( '-d', '--debug', 'add -debug option' )    { |v| $OPT_d = v }
+  opt.on( '-n', '--suppress' )                      { |v| $OPT_n = v }
+  opt.on( '-s', '--size=WxH' ) { |v| $OPT_s = v  if v =~ /^\d+x\d+$/ }
+
+  opt.parse!
+}
+
+
+def by_Ruby;       run     "ruby  solver.rb  #{@opt}"; end
+def by_Python
+  cmd = select_cmd( "python3",  "python" )
+  run "#{cmd} -u solver.py  #{@opt}" # -u :unbuffered
+end
+
+def by_Lua;        run       "lua solver.lua #{@opt}"; end
+def by_Squirrel;   run        "sq solver.nut #{@opt}"; end
+def by_Julia;      run     "julia solver.jl  #{@opt}"; end
+def by_Javascript; run      "node solver.js  #{@opt}"; end
+def by_Groovy;     run    "groovy solver.groovy #{@opt}"; end
+
+def by_Typescript
+  run "tsc --target es2019 --module commonjs --strict solver-ts.ts",
+      "node solver-ts.js #{@opt}"
+end
+
+def by_Cs
+  if exists?( "mono" )
+    csc = select_cmd( "mcs", "csc" )
+    run "#{csc} -nologo -optimize+ -out:solver.cs.out solver.cs",
+        "mono solver.cs.out #{@opt}"
+  else
+    # cygwin/windows
+    run "csc -nologo -optimize+ -out:solver.cs.out solver.cs",
+        "./solver.cs.out #{@opt}"
+  end
+end
+
+def by_Perl
+  run "perl solver.pl #{@opt}"
+end
+
+def by_Awk
+  cmd = select_cmd( "gawk", "awk" )
+  run "#{cmd} -f solver.awk -- #{@opt}"
+end
+
+def by_Php
+  run "php solver.php #{@opt}"
+end
+
+def by_Java
+  run  "javac -d build Solver.java",
+       "java -cp build Solver #{@opt}"
+end
+
+def by_Kotlin
+  run "kotlinc solver.kt -include-runtime -d solver.jar",
+      "kotlin solver.jar #{@opt}"
+end
+
+def by_Go
+  run "go run solver.go #{@opt}"
+end
+
+def by_Rust
+  if exists?( "rust-script" )
+    run "rust-script solver.rs #{@opt}"
+  else
+    run "rustc -O -o solver.rs.out solver.rs",
+        "./solver.rs.out #{@opt}"
+  end
+end
+
+def by_Swift
+  if exists?( "swiftc" )
+    run "swiftc -O -o solver.swift.out solver.swift",
+        "./solver.swift.out #{@opt}"
+  else
+    run "swift solver.swift #{@opt}"
+  end
+end
+
+def by_Lisp
+  if exists?( "sbcl" )
+    run "sbcl --script solver.lisp #{@opt}"
+  else
+    run "clisp -q -c solver.lisp -o solver.lisp.fas",
+        "clisp solver.lisp.fas #{@opt}"
+  end
+end
+
+def by_C
+  cc = select_cmd( "clang",  "gcc" )
+  run "#{cc} -o solver.c.out -O2 solver.c",
+      "./solver.c.out #{@opt}"
+end
+
+def by_Cpp
+  cpp = select_cmd( "clang++",  "gcc++" )
+  run "#{cpp} -o solver.cpp.out -O2 -std=c++17 solver.cpp",
+      "./solver.cpp.out #{@opt}"
+end
+
+###################################
+
+def exists?( bin )
+  %x[ type #{bin} > /dev/null 2>&1 ]
+  $? == 0
+end
+
+def select_cmd( *progs )
+  progs.select{ |prg| exists?( prg ) }[0] || progs[-1]
+end
+
+def run( *cmds )
+  cmds.each do |cmd|
+    puts "    #{cmd}"
+    bin = cmd.split[0]
+    if ! exists?( bin )
+      puts "    #{bin} doesn't exist."
+      return true
+    elsif $OPT_n == nil
+      IO.popen( "bash -c 'time #{cmd}' 2>&1", "r+" ) do |io|
+        while !io.eof
+          puts io.gets
+        end
+      end
+      return false  if $? != 0
+    end # if
+  end # each
+  return true
+end
+
+
+def main()
+  @progs = (ARGV.size != 0)? ARGV.map{ |s| s.to_sym } : PROG_LIST.keys
+  @opt   = [ $OPT_d ? "--debug" : "", $OPT_s.to_s ].join( " " ).strip
+
+  @progs.each do |pg|
+    pg = PROG_LIST.find{ |k,ext| k == pg || ext == pg }.to_a[0] || pg
+    method = "by_#{pg.capitalize}".to_sym
+
+    if self.respond_to?( method, true )
+      puts "== #{pg.capitalize} =="
+      ret = send( method )
+      break  unless ret
+    else
+      puts "#{pg} ?"
+    end
+  end
+end
+
+begin
+  $stdout.sync = true
+  main
+rescue Interrupt
+  puts "Interrupted"
+rescue Errno::EPIPE
+rescue OptionParser::MissingArgument
+rescue OptionParser::InvalidOption
+  puts $!
+rescue
+  puts $!.class
+  puts $!
+  puts $!.backtrace
+end
