@@ -87,7 +87,7 @@ class Fig
   @@bits2fig = {}
   def self.all_figs;      @@bits2fig.values;   end
 
-  attr_reader :pc, :pts, :bp, :bits
+  attr_reader :pc, :pts, :bits
   attr_reader :symms        #[ :x, :Rz ...]
 
   def initialize( _pc, _pts )
@@ -95,19 +95,17 @@ class Fig
     @pts = _pts
 
     @bits = @@grid.pts2bit( _pts )
-    @bp   = _pts[0] ? @@grid.offset( *(_pts[0]) ) : 0
     @@bits2fig[ @bits ] = self
 
-    # ミラーが自分と一致する ミラー軸 を全て求めておく
+    # ミラーが自分と一致する 軸 を全て求めておく
     @symms = @@grid.symms.select{ |symm| mirror_by_axis( symm ) == self }
   end
 
   def inspect;  to_s;  end
 
   def to_s
-    sprintf( '@id="%s" 0x%016x at(%d,%d,%d: %2d), symms=%s, [%s]',
+    sprintf( '@id="%s" 0x%016x, symms=%s, [%s]',
              @pc.id, @bits,
-             *@@grid.pt(@bp), @bp,
              @symms,
              @pts.map{ |pt| "(%d,%d,%d)" % [*pt] }.join( ',')
            )
@@ -170,10 +168,11 @@ class Piece
       }
     }.uniq                                       # uniq
 
-    # grid上 位置事に配置可能な fig を計算
+    # grid上 位置毎に配置可能な全ての fig を計算
     @figs_at = Array.new( @@grid.size ) { |bp|
+      ox, oy, oz = @@grid.bp2pt[bp]
       @org_pts.map{ |pts|
-        pts.map{ |pt| pt.zip( @@grid.pt( bp ) ).map{ |a,o| a + o } }
+        pts.map{ |x,y,z| [ x + ox, y + oy, z + oz ] }
       }.select{ |pts|
         # Grid に収まり、穴に干渉しない場合のみ
         pts.all?{ |pt| @@grid.is_inside?( *pt ) } &&
@@ -196,7 +195,7 @@ class Piece
         }
       }
     }
-  end
+  end   # initializ()
 
 
   # 対称性を排除する anchor_figs
@@ -211,12 +210,12 @@ class Piece
           sort_by{ |fig| fig.bits }[0]
       }.uniq
     }
-  end   # initializ()
+  end
 
   def inspect;  to_s;  end
 
   def to_s
-    sprintf( "Piece: '%c' next:'%s'",
+    sprintf( "Piece: '%s' next:'%s'",
              @id,
              @next ? @next.id: 'nil'
            )
@@ -233,7 +232,8 @@ class Grid
   BITPOS = (0..64).each_with_object( {} ) { |i, h|  h[ 1 << i ] = i }
   SPACE = '.'
 
-  attr_reader :width, :height, :depth, :size, :sp_size, :bits, :symms
+  attr_reader :width, :height, :depth, :size, :sp_size
+  attr_reader :bits, :bp2pt, :symms
 
   # [x,z,z] -> bp
   def offset( x, y, z )
@@ -242,10 +242,6 @@ class Grid
 
   def is_inside?( x, y, z )
     x >= 0 && x < @width  &&  y >= 0 && y < @height  &&  z >= 0 && z < @depth
-  end
-
-  def pt(bp)
-    @pt_by_bp[ bp ]
   end
 
   def pts2bit( pts )
@@ -258,7 +254,7 @@ class Grid
     @sp_size = @size
     @bits    = 0
 
-    @pt_by_bp = Array.new( @size ) {|bp|
+    @bp2pt = Array.new( @size ) {|bp|
       z, xy = bp.divmod( @height * @width )
       y, x = xy.divmod( @width )
       [ x, y, z]
@@ -302,19 +298,18 @@ class Grid
     # array
     grid = Array.new( @size ){ SPACE }
     ids  = Array.new( @depth ) { "" }
-
-    id = ->( *pt ) { is_inside?( *pt )? grid[ offset( *pt ) ] : '?' }
-
     # WxHxD に Piece ID を書き込む
-    figs.select{ |fig| fig.bits > 0 }.each{ | fig |
+    figs.each{ | fig |
+      pc_id = fig.pc.id
       fig.pts.each {| x,y,z |
-        pc_id = fig.pc.id
         grid[ offset( x,y,z ) ] = pc_id
         if ids[z] !~ /#{pc_id}/i
           ids[z] << ( (z == fig.pts[0][2] )? pc_id : pc_id.downcase )
         end
       }
     }
+
+    id = ->( *pt ) { is_inside?( *pt )? grid[ offset( *pt ) ] : '?' }
 
     Array.new( @height + 1 ) {|y|
       Array.new( @depth ) { |z|
@@ -346,7 +341,7 @@ class Grid
       num_and_bits[0] += 1
       num_and_bits[1] |= b
 
-      x, y, z = *@pt_by_bp[ bp ]
+      x, y, z = *@bp2pt[ bp ]
       space_num( bp - 1,                num_and_bits )  if x > 0
       space_num( bp + 1,                num_and_bits )  if x < @width - 1
       space_num( bp - @width,           num_and_bits )  if y > 0
@@ -472,9 +467,9 @@ class Solver
       # 対称性が残っている場合、対称性を制限する anchor_figs を設定する
       anchor    = prev.next
       prev.next = anchor.next
-      anchor.anchor_figs[ _symms ].each{ |next_fig|
-        if @grid.check( next_fig )
-          solve( next_fig, _symms & next_fig.symms ) { |cond, figs|
+      anchor.anchor_figs[ _symms ].each{ |fig|
+        if @grid.check( fig )
+          solve( fig, _symms & fig.symms ) { |cond, figs|
             yield [ cond, figs.unshift( _fig ) ]
           }
         end
@@ -484,9 +479,9 @@ class Solver
     else
       while ( pc = prev.next ) != nil
         prev.next = pc.next
-        pc.figs_at[bp].each{ |next_fig|
-          if @grid.check( next_fig )
-            solve( next_fig ) { |cond, figs|
+        pc.figs_at[bp].each{ |fig|
+          if @grid.check( fig )
+            solve( fig ) { |cond, figs|
               yield [ cond, figs.unshift( _fig ) ]
             }
           end
