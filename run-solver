@@ -16,21 +16,31 @@ PROG_LIST = { Ruby:       :rb,          Python:     :py,
               Lisp:       :lisp,
             }
 
-exit unless ARGV.options {|opt|
-    opt.banner =<<EOT
-Usage:  #{File.basename(__FILE__)} OPTION... PROG...
-Execute PENTOMINO Solvers written in various programming languages.
+$O = {}
+exit(1) unless ARGV.options{|opt|
+  opt.banner =<<EOT
+Usage:  #{File.basename(__FILE__)} OPTION... ext...
+    Execute PENTOMINO Solvers written in various programming languages.
+    ext :#{PROG_LIST.values[0,10].join(', ')}
+         #{PROG_LIST.values[10..-1].join(', ')}
 
-PROG = #{PROG_LIST.keys[0,7].join(', ')}
-       #{PROG_LIST.keys[7..-1].join(', ')}
+    ex) ./run-solver --size 8x8 rb py
+        # ruby solver.rb 8x8
+        # python3 solver.py 8x8
+
 EOT
-  opt.on( '-d', '--debug', 'add -debug option' )    { |v| $OPT_d = v }
-  opt.on( '-n', '--suppress' )                      { |v| $OPT_n = v }
-  opt.on( '-s', '--size=WxH' ) { |v| $OPT_s = v  if v =~ /^\d+x\d+$/ }
+  opt.on( '-d', '--debug', "execute with '--debug'" )
+  opt.on( '-n', '--suppress' )
+  opt.on( '-s', '--size=WxH' ) { |v| v =~ /^\d+x\d+$/ ? v : nil }
+  opt.on( '-a', '--all',  "execute all languages" )
 
-  opt.parse!
+  r = opt.parse!( into: $O )
+  if ARGV.empty? && !$O[:all]
+    puts opt.help
+    exit
+  end
+  r
 }
-
 
 def by_Ruby;       run     "ruby  solver.rb  #{@opt}"; end
 def by_Python
@@ -145,7 +155,7 @@ def run( *cmds )
     if ! exists?( bin )
       puts "    #{bin} doesn't exist."
       return true
-    elsif $OPT_n == nil
+    elsif $O[:suppress] == nil
       IO.popen( "bash -c 'time #{cmd}' 2>&1", "r+" ) do |io|
         while !io.eof
           puts io.gets
@@ -159,15 +169,16 @@ end
 
 
 def main()
-  @progs = (ARGV.size != 0)? ARGV.map{ |s| s.to_sym } : PROG_LIST.keys
-  @opt   = [ $OPT_d ? "--debug" : "", $OPT_s.to_s ].join( " " ).strip
+  @progs = $O[:all] ? PROG_LIST.keys : ARGV.map{ |s| s.to_sym }
+
+  @opt   = [ $O[:debug] ? "--debug" : "", $O[:size].to_s ].join( " " ).strip
 
   @progs.each do |pg|
     pg = PROG_LIST.find{ |k,ext| k == pg || ext == pg }.to_a[0] || pg
     method = "by_#{pg.capitalize}".to_sym
 
     if self.respond_to?( method, true )
-      puts "== #{pg.capitalize} =="
+      puts "== #{pg.capitalize.to_s.sub( /Cs/, "C#" )} =="
       ret = send( method )
       break  unless ret
     else
@@ -182,8 +193,6 @@ begin
 rescue Interrupt
   puts "Interrupted"
 rescue Errno::EPIPE
-rescue OptionParser::MissingArgument
-rescue OptionParser::InvalidOption
   puts $!
 rescue
   puts $!.class
