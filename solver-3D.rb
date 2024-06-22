@@ -4,9 +4,9 @@
 require 'optparse'
 
 # default options
-@o = { size: [6,10,1], every: 1, wind_up: true }
+OPT = { sizea: [6,10,1], every: 1, windup: true }
 
-exit unless ARGV.options {|opt|
+exit(1) unless ARGV.options {|opt|
   opt.banner =<<EOT
   Size  Solutions   Size   Solutions   Size  Solutions   Size  Solutions
   ----- ---------   ------ ---------   ----- ---------   ------ ---------
@@ -18,7 +18,7 @@ exit unless ARGV.options {|opt|
 EOT
 
   opt.on( '-s', '--size WxHxD',
-          "#{@o[:size].join('x')}(default)",
+          "#{OPT[:sizea].join('x')}(default)",
           '8x8h, 7x9h : with a hole in the middle'
         ) {|v|
     sz = v.match(/(\d+)\D(\d+)h?/i).to_a[1..-1].map{ |s| s.to_i }
@@ -32,20 +32,22 @@ EOT
     end
     sz = [ sz[1], sz[2], 1 ] if sz[0] == 1
     sz = [ sz[0], sz[2], 1 ] if sz[1] == 1
-    @o[:size] = sz
-    @o[:hole] = v !~ /h$/
+    OPT[:sizea] = sz
+    OPT[:hole] = v !~ /h$/
+    sz.join( ' ' )
   }
 
   opt.on( '-e', '--every N',
           'display a solution every N times.',
-          '(nothing when N=0)' )                { |v| @o[:every] = v.to_i  }
-  opt.on( '-i', '--interactive' )               { |v| @o[:interactive] = v }
-  opt.on( '-n', '--[no-]wind-up' )              { |v| @o[:wind_up]     = v }
-  opt.on( '-p', '--print', 'print piece ID' )   { |v| @o[:print]       = v }
-  opt.on( '-3', '--3D', 'equivalent -s3x4x5'  ) { |v| @o[:size] = [3,4,5]  }
-  opt.on( '--step', 'show step-by-step' )       { |v| @o[:step]        = v }
-  opt.on( '--debug' )                           { |v| $OPT_debug       = v }
-  opt.parse!
+          '(nothing when N=0)' )                { |v| v.to_i  }
+  opt.on( '-i', '--interactive' )
+  opt.on( '-n', '--[no-]windup' )
+  opt.on( '-p', '--print', 'print piece ID' )
+  opt.on( '-3', '--3D', 'equivalent -s3x4x5'  ) { |v| OPT[:sizea] = [3,4,5]; v }
+  opt.on( '--step', 'show step-by-step' )
+  opt.on( '-d',  '--debug' )
+  opt.parse!( into: OPT )
+  p OPT
 }
 
 ################################################
@@ -187,7 +189,7 @@ class Piece
                                [ 0, fig.bits | @@grid.bits ] )
         ( ( n % 5 ) == 0 || ( n % 5 ) == ( @@grid.sp_size - 60 ) ).
           tap{|f|
-          if $OPT_debug && ! f
+          if OPT[:debug] && ! f
             puts @id
             puts @@grid.render( [fig] )
             gets
@@ -249,8 +251,8 @@ class Grid
   end
 
   def initialize( opt )
-    @width, @height, @depth = opt[:size]
-    @size                   = opt[:size].reduce(:*)
+    @width, @height, @depth = opt[:sizea]
+    @size                   = opt[:sizea].reduce(:*)
     @sp_size = @size
     @bits    = 0
 
@@ -390,7 +392,7 @@ class Solver
     # dummy piece
     Piece.new( '@', [] )
 
-    if @o[:size][2] == 1
+    if @o[:sizea][2] == 1
       id_list = %w( X F I L N P T U V W Y Z )
       id_list << 's'  if @o[:hole] && @grid.size == 64
       id_list << 'b'  if @o[:hole] && @grid.size == 63
@@ -407,7 +409,7 @@ class Solver
 
 
   def show_solution( figs )
-    printf( "\033[%dA", @printed_lines ) if @o[:wind_up] && @printed_lines != 0
+    printf( "\033[%dA", @printed_lines ) if @o[:windup] && @printed_lines != 0
 
     lines = []
     lines += @grid.render( figs, @o[:print] )   if @o[:every] > 0
@@ -507,9 +509,9 @@ def main
     puts "unknown args #{ARGV}"
     exit 1
   end
-  @o[:print] ||= true   if @o[:size][2] != 1
+  OPT[:print] ||= true   if OPT[:sizea][2] != 1
 
-  @solver = Solver.new( @o )
+  @solver = Solver.new( OPT )
   @solver.run()
 end
 
@@ -519,8 +521,6 @@ begin
 rescue Interrupt
   puts "Interrupted"
 rescue Errno::EPIPE
-rescue OptionParser::MissingArgument
-rescue OptionParser::InvalidOption
   puts $!
 rescue
   puts $!.class
