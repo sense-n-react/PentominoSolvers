@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 #define debug(a)        (void) (debug_flg? printf a : 0)
-#define numOf(a)        (sizeof(a)/sizeof(*a))
+#define numOf(a)        (size_t)( (sizeof(a)/sizeof(*a)) )
 #define new( p, T )     T* p = malloc(sizeof(T)); memset(p,0,sizeof(T))
 
 const char* PIECE_DEF[] = {
@@ -71,7 +71,7 @@ int debug_flg = 0;
 
 typedef struct Piece
 {
-  int  id;
+  char id;
 
   Fig  figs[8];             /* calced from base_fig[] */
   Fig  *fig_end;
@@ -89,7 +89,7 @@ cmp_point( const void *a, const void *b )
 }
 
 Piece *
-new_piece( int id, const Fig *fig_def, Piece *next_ )
+new_piece( char id, const Fig *fig_def, Piece *next_ )
 {
   new( this, Piece );
 
@@ -174,7 +174,7 @@ new_board( int w, int h )
 }
 
 
-int
+char
 at( const Board *this, int x, int y )
 {
   if ( x >= 0 && x < this->width && y >= 0 && y < this->height )
@@ -187,7 +187,7 @@ at( const Board *this, int x, int y )
 int
 check( const Board *this, const Point* o, const Fig* fig )
 {
-  for ( int i = 0; i < numOf(fig->pt); ++i ) {
+  for ( size_t i = 0; i < numOf(fig->pt); ++i ) {
     if ( at( this, o->x + fig->pt[i].x, o->y + fig->pt[i].y ) != SPACE )
       return 0;
   }
@@ -196,9 +196,9 @@ check( const Board *this, const Point* o, const Fig* fig )
 
 
 void
-place( Board *this, const Point* o, int id, const Fig* fig )
+place( Board *this, const Point* o, char id, const Fig* fig )
 {
-  for ( int i = 0; i < numOf(fig->pt); ++i ) {
+  for ( size_t i = 0; i < numOf(fig->pt); ++i ) {
     this->cells[ o->y + fig->pt[i].y ][ o->x + fig->pt[i].x ] = id;
   }
 }
