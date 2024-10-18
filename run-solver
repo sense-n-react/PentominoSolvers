@@ -13,7 +13,7 @@ PROG_LIST = { Ruby:       :rb,          Python:     :py,
               Cs:         :cs,          Java:       :java,
               Kotlin:     :kt,          Go:         :go,
               Rust:       :rs,          Swift:      :swift,
-              Lisp:       :lisp,
+              Lisp:       :lisp,        Crystal:    :cr,
             }
 
 $O = {}
@@ -127,14 +127,19 @@ end
 
 def by_C
   cc = select_cmd( "clang",  "gcc" )
-  run "#{cc} -o solver.c.out -O2 solver.c",
+  run "#{cc} -o solver.c.out -O2 -Wall solver.c",
       "./solver.c.out #{@opt}"
 end
 
 def by_Cpp
   cpp = select_cmd( "clang++",  "gcc++" )
-  run "#{cpp} -o solver.cpp.out -O2 -std=c++17 solver.cpp",
+  run "#{cpp} -o solver.cpp.out -O2 -Wall -std=c++17 solver.cpp",
       "./solver.cpp.out #{@opt}"
+end
+
+def by_Crystal
+  run "crystal build --release -o solver.cr.out solver.cr",
+      "./solver.cr.out #{@opt}"
 end
 
 ###################################
