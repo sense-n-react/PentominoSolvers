@@ -109,7 +109,7 @@ end
 
 def by_Swift
   if exists?( "swiftc" )
-    run "swiftc -O -o solver.swift.out solver.swift",
+    run "swiftc -Ounchecked -o solver.swift.out solver.swift",
         "./solver.swift.out #{@opt}"
   else
     run "swift solver.swift #{@opt}"
