@@ -132,7 +132,7 @@ def by_C
 end
 
 def by_Cpp
-  cpp = select_cmd( "clang++",  "gcc++" )
+  cpp = select_cmd( "clang++",  "g++" )
   run "#{cpp} -o solver.cpp.out -O2 -Wall -std=c++17 solver.cpp",
       "./solver.cpp.out #{@opt}"
 end
