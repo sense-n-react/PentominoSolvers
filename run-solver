@@ -14,6 +14,7 @@ PROG_LIST = { Ruby:       :rb,          Python:     :py,
               Kotlin:     :kt,          Go:         :go,
               Rust:       :rs,          Swift:      :swift,
               Lisp:       :lisp,        Crystal:    :cr,
+              Elixir:     :exs
             }
 
 $O = {}
@@ -140,6 +141,10 @@ end
 def by_Crystal
   run "crystal build --release -o solver.cr.out solver.cr",
       "./solver.cr.out #{@opt}"
+end
+
+def by_Elixir
+  run "elixir ./solver.exs #{@opt}"
 end
 
 ###################################
