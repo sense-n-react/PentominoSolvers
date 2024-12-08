@@ -31,4 +31,5 @@ $ ./run-solver -all
 | JavaScript | TypeScript | Groovy | Perl     | AWK   |
 | PHP        | C          | C++    | C#       | Java  |
 | Kotlin     | Go         | Rust   | Swift    | LISP  |
+| Crystal    | Elixir     |        |          |       |
 
