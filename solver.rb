@@ -163,7 +163,7 @@ width, height = 6, 10
 while arg = ARGV.shift
   $debug_flg = true   if arg == "--debug"
 
-  sz = arg.match( /^(\d+)\D(\d+)$/ ).to_a[1..-1].map{ |s| s.to_i }
+  sz = arg.match( /^(\d+)\D(\d+)$/ ).to_a[1..-1].to_a.map{ |s| s.to_i }
   if sz.size == 2 && sz[0] >= 3 && sz[1] >= 3 &&
      ( sz[0] * sz[1] == 60 || sz[0] * sz[1] == 64 )
     width, height = sz[0], sz[1]
