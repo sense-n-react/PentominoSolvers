@@ -17,7 +17,8 @@ RUN apt-get install -y binutils git gnupg2 libc6-dev libcurl4-openssl-dev \
 #  Ruby, Python, ...
 #
 RUN apt-get install -y ruby python3 nodejs npm lua5.1 php g++ groovy \
-      mono-complete dotnet6 rust-all sbcl clisp default-jdk kotlin golang-go
+      mono-complete dotnet6 rust-all sbcl clisp default-jdk kotlin golang-go \
+      elixir
 #
 # TypeScript
 #
