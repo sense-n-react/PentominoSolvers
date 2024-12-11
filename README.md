@@ -20,7 +20,7 @@ $ ./run-solver ruby python  # specify language(s)
 
 ### run all programs
 ~~~
-$ ./run-solver -all
+$ ./run-solver --all
 ~~~
 
 ## Languages
@@ -32,4 +32,9 @@ $ ./run-solver -all
 | PHP        | C          | C++    | C#       | Java  |
 | Kotlin     | Go         | Rust   | Swift    | LISP  |
 | Crystal    | Elixir     |        |          |       |
+
+
+## Processing Time
+
+![Processing Time](https://github.com/sense-n-react/PentominoSolvers/blob/images/images/time-6x10.png)
 
