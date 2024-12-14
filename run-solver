@@ -14,7 +14,7 @@ PROG_LIST = { Ruby:       :rb,          Python:     :py,
               Kotlin:     :kt,          Go:         :go,
               Rust:       :rs,          Swift:      :swift,
               Lisp:       :lisp,        Crystal:    :cr,
-              Elixir:     :exs
+              Elixir:     :exs,         Fs:         :fsx
             }
 
 $O = {}
@@ -22,8 +22,12 @@ exit(1) unless ARGV.options{|opt|
   opt.banner =<<EOT
 Usage:  #{File.basename(__FILE__)} OPTION... ext...
     Execute PENTOMINO Solvers written in various programming languages.
-    ext :#{PROG_LIST.values[0,10].join(', ')}
-         #{PROG_LIST.values[10..-1].join(', ')}
+    ext:
+#{     PROG_LIST.values.each_slice(10).to_a.
+         map{ |e| e.join(', ') }.
+         map{ |l| "      #{l}" }.
+         join( "\n" )
+}
 
     ex) ./run-solver --size 8x8 rb py
         # ruby solver.rb 8x8
@@ -147,6 +151,10 @@ def by_Elixir
   run "elixir ./solver.exs #{@opt}"
 end
 
+def by_Fs
+  run "dotnet fsi ./solver.fsx #{@opt}"
+end
+
 ###################################
 
 def exists?( bin )
@@ -166,7 +174,10 @@ def run( *cmds )
       puts "    #{bin} doesn't exist."
       return true
     elsif $O[:suppress] == nil
-      IO.popen( "bash -c 'time #{cmd}' 2>&1", "r+" ) do |io|
+      # swap stdout with stderr
+      #   stderr:  output of solver
+      #   stdout:  output of time command
+      IO.popen( "bash -c 'time #{cmd}' 3>&1 1>&2 2>&3", "r+" ) do |io|
         while !io.eof
           puts io.gets
         end
@@ -183,12 +194,12 @@ def main()
 
   @opt   = [ $O[:debug] ? "--debug" : "", $O[:size].to_s ].join( " " ).strip
 
+  rename_list = { Cpp: 'C++', Cs: 'C#', Fs: 'F#' }
   @progs.each do |pg|
     pg = PROG_LIST.find{ |k,ext| k == pg || ext == pg }.to_a[0] || pg
     method = "by_#{pg.capitalize}".to_sym
-
     if self.respond_to?( method, true )
-      puts "== #{pg.capitalize.to_s.sub( /Cs/, "C#" )} =="
+      puts "== #{ (rename_list[ pg ] || pg ).capitalize } =="
       ret = send( method )
       break  unless ret
     else
