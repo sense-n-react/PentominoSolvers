@@ -7,7 +7,10 @@
 defmodule Piece do
 
   def create_pieces( debug_flg ) do
-    piece_def_doc = """
+    split_w_idx_and_reduce =
+      &Enum.reduce( Enum.with_index( String.split(&1, &2, [])), &3, &4 )
+
+    pIECE_DEF = """
     +-------+-------+-------+-------+-------+-------+
     |       |   I   |  L    |  N    |       |       |
     |   F F |   I   |  L    |  N    |  P P  | T T T |
@@ -21,34 +24,27 @@ defmodule Piece do
     |       |       |       |       |    Y  |       |
     +-------+-------+-------+-------+-------+-------+
     """
-
-    split_with_idx = &Enum.with_index( String.split( &1, &2, &3 ) )
-    piece_def =
-    for { line, y } <- split_with_idx.( piece_def_doc, "\n", [] ) do
-      for { char, col } <- split_with_idx.( line, "", trim: true ) do
-        { char, ceil( col/2 ), y  }
-      end |> List.flatten()
-    end |> List.flatten()
-    |> Enum.reduce( %{}, fn { id, x, y }, defs ->
-      Map.put( defs, id,  Map.get( defs, id, [] ) ++ [[ x,y ]]  )
+    |> split_w_idx_and_reduce.( "\n", %{}, fn { line, y }, defs ->
+      line |> split_w_idx_and_reduce.( "", defs, fn { id, x }, defs  ->
+        Map.put( defs, id,  Map.get( defs, id, [] ) ++ [[ ceil(x/2), y ]] )
+      end)
     end)
-#   IO.inspect( piece_def )
+#   IO.inspect( pIECE_DEF )
 
     "FLINPTUVWXYZ"
     |> String.split( "", trim: true )
     |> Enum.reduce( [], fn id, pieces ->
       figs = 
         for r_f <- 0..7 do
-          fig = piece_def[id]
-          |> Enum.map(fn [x, y] ->
+          pIECE_DEF[id]
+          |> Enum.map( fn [x, y] ->
             rot = Enum.slice( 0..3, 0, rem(r_f,4) )        # rotate
             [x, y] = Enum.reduce( rot, [x,y], fn _, [x, y] -> [-y, x]  end)
             if r_f < 4, do: [x, y], else: [-x, y]          # flip
           end)
           |> Enum.sort_by(fn [x, y] -> [y, x] end)         # sort
-          [ x0, y0 ] = hd( fig )
-          fig
-          |> Enum.map(fn [x, y] -> [x - x0, y - y0] end)   # normarize
+          |> ( &Enum.map( &1,                              # normarize
+              fn [x,y] -> [x0,y0] = hd(&1); [x-x0, y-y0] end) ).()
         end
         |> Enum.uniq()                                     # uniq
       if debug_flg, do: IO.inspect( figs, label: id )
@@ -56,43 +52,26 @@ defmodule Piece do
     end)
   end
 
-end
+end # Piece
 
 
-defmodule Helper do
-  def transpose( list ) do
-    Enum.zip_with( list, &Function.identity/1 )
-  end
-end
+#########################################################
 
 defmodule Board do
-  defstruct width: 0, height: 0, cells: [], elems: []
+  defstruct width: 0, height: 0, cells: []
 
   def new( o ) do
     { w, h } = { o.width, o.height }
     cells = List.duplicate( List.duplicate( :SPACE, w ), h )
     hole  = if w * h == 64, do: [ [0,0], [0,1], [1,0], [1,1] ], else: []
-    elems = [
-      "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---",
-      "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
-    ]
-    |> Enum.map(&String.split(&1, ","))
-    |> transpose()
 
-    %Board{ width: w, height: h, cells: cells, elems: elems }
+    %Board{ width: w, height: h, cells: cells }
     |> Board.place( ceil(w/2) - 1, ceil(h/2) - 1, hole, "@" )
   end
 
-  def transpose( list ) do
-    Enum.zip_with( list, &Function.identity/1 )
-  end
-
-  def at( self, x, y) do
-    if x >= 0 and x < self.width and y >= 0 and y < self.height do
-      Enum.at( Enum.at( self.cells, y), x)
-    else
-      "?"
-    end
+  defp at( self, x, y) do
+    if x >= 0 && x < self.width && y >= 0 && y < self.height,
+      do: Enum.at( Enum.at( self.cells, y ), x )
   end
   
   def check( self, ox, oy, fig) do
@@ -100,7 +79,7 @@ defmodule Board do
   end
 
   def place( self, ox, oy, fig, id ) do
-    self |> Map.update!( :cells, fn cells ->
+    Map.update!( self, :cells, fn cells ->
       Enum.reduce( fig, cells, fn [x,y], cells ->
         List.update_at( cells, y + oy, fn row ->
           List.update_at( row, x + ox, fn _ ->
@@ -123,6 +102,13 @@ defmodule Board do
   end
 
 
+  @elems  [
+    "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---",
+    "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
+  ]
+  |> Enum.map( &String.split(&1, ",") )
+  |> Enum.zip_with( &Function.identity/1 )   # transpose
+
   def render( self ) do
     for y <- 0..self.height do
       for x <- 0..self.width do
@@ -131,16 +117,18 @@ defmodule Board do
         ( if ( at(self, x+0, y-1 ) != at(self, x-1, y-1 ) ), do: 2, else: 0 ) +
         ( if ( at(self, x-1, y-1 ) != at(self, x-1, y+0 ) ), do: 4, else: 0 ) +
         ( if ( at(self, x-1, y+0 ) != at(self, x+0, y+0 ) ), do: 8, else: 0 )
-        Enum.at( self.elems, e)
+        Enum.at( @elems, e )
       end
-      |> transpose()
-      |> Enum.map(&Enum.join(&1, ""))
+      |> Enum.zip_with( &Function.identity/1 )   # transpose
+      |> Enum.map( &Enum.join(&1) )
     end
     |> List.flatten()
     |> Enum.join("\n")
   end
-end
+end  # Board
 
+
+#########################################################
 
 defmodule Solver do
   defstruct free_pcs: [], bd: nil
@@ -149,7 +137,7 @@ defmodule Solver do
     fig_num = if o.width == o.height, do: 0, else: 1
     pieces =
       Piece.create_pieces( o.debug )
-      |> Keyword.update!( :F, fn figs -> Enum.slice( figs, 0..fig_num ) end)
+      |> Keyword.update!( :F, &Enum.slice( &1, 0..fig_num ) )
 
     %Solver{ free_pcs: pieces, bd: Board.new( o ) }
   end
@@ -164,22 +152,19 @@ defmodule Solver do
     if length( self.free_pcs ) > 0 do
       {x, y} = Board.find_space( self.bd, x, y )
       self.free_pcs |> Enum.each( fn pc ->
-        next = self |> Map.update!( :free_pcs, fn list ->
-          List.delete( list, pc )
-        end)
-        [ id, figs ] = Tuple.to_list( pc )
+        next = self |> Map.update!( :free_pcs, &List.delete( &1, pc ) )
+        { id, figs } = pc
         figs |> Enum.each( fn fig->
           if Board.check( self.bd, x, y, fig ) do
-            next |> Map.update!( :bd, fn bd ->
-              Board.place( bd, x, y, fig, id )
-            end)
+            next
+            |> Map.update!( :bd, &Board.place( &1, x, y, fig, id ) )
             |> solve( x, y )
           end
         end)
       end)  # Enum.each pc
     else
-      sols = solutions( :up )
-      curs_up = if sols > 1, do: "\x1b[#{self.bd.height*2+2}A", else: ""
+      sols    = solutions( :up )
+      curs_up = if sols > 1, do: "\x1b[#{self.bd.height * 2 + 2}A", else: ""
       IO.puts( curs_up <> Board.render(self.bd) <> Integer.to_string( sols ) )
     end
   end
@@ -189,9 +174,7 @@ defmodule Solver do
     case arg do
       :init -> Agent.start_link( fn -> 0 end, name: __MODULE__)
       :get  -> Agent.get(__MODULE__, & &1)
-      :up   ->
-        Agent.update(__MODULE__, &(&1 + 1))
-        solutions()
+      :up   -> Agent.update(__MODULE__, &(&1 + 1));  solutions()
     end
   end
 
@@ -201,24 +184,26 @@ defmodule Solver do
     { opts, other_args, _invalid } = argv
     |> OptionParser.parse( switches: [debug: :boolean])
 
-    # Extract the debug flag
     debug_flg = Keyword.get(opts, :debug, false)
-
-    # Extract size argument or set default
     size =
       other_args
       |> Enum.find(&String.match?(&1, ~r/^\d+x\d+$/))
-      |> parse_size( %{ width: 6, height: 10})
+      |> parse_size( %{ width: 6, height: 10} )
     Map.merge( %{debug: debug_flg} , size )
   end
 
   defp parse_size(nil, default), do: default
-  defp parse_size(size_str, _default) do
-    size = size_str
+  defp parse_size(size_str, default) do
+    [ w, h ] = size_str
     |> String.split("x")
 #   |> Kernel.tap( fn o -> IO.inspect( o ) end )
     |> Enum.map( &String.to_integer/1 )
-    %{ width: hd( size ), height: Enum.at( size, 1 ) }
+    if ( w * h == 60 || w * h == 64 ) && w >= 3 && h >= 3 do
+      %{ width: w, height: h }
+    else
+      IO.puts( "ignore wrong size: #{size_str}" )
+      default
+    end
   end
 
 end  # Solver
@@ -226,5 +211,5 @@ end  # Solver
 opt = Solver.opt_parse( System.argv() )
 if opt.debug, do: IO.inspect opt
 
-Solver.new( opt ) #( width: 5, height: 12 )
+Solver.new( opt )
 |> Solver.run

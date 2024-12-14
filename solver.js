@@ -80,8 +80,7 @@ class Board {
     this.cells  = Array( this.height ).fill( null ).
       map( _ => Array( this.width ).fill( Board.SPACE ) );
     if ( w * h == 64 ) {
-      this.cells[h/2 - 1][w/2 - 1] = '@'; this.cells[h/2 - 1][w/2 - 0] = '@';
-      this.cells[h/2 - 0][w/2 - 1] = '@'; this.cells[h/2 - 0][w/2 - 0] = '@';
+      this.place( w/2-1, h/2-1, [ [0,0], [0,1], [1,0], [1,1] ], '@' );
     }
   }
 

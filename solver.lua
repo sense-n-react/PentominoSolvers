@@ -121,10 +121,7 @@ Board = {
       end
       if  w * h == 64 then           -- 8x8 or 4x16
          local cx, cy = math.floor( w / 2 ), math.floor( h / 2 )
-         o.cells[ cy     ][ cx     ] = '@'
-         o.cells[ cy     ][ cx + 1 ] = '@'
-         o.cells[ cy + 1 ][ cx     ] = '@'
-         o.cells[ cy + 1 ][ cx + 1 ] = '@'
+         Board.place( o, cx, cy, { {0,0}, {0,1}, {1,0}, {1,1} }, '@' )
       end
       setmetatable( o, { __index = self } )
       return o

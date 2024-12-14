@@ -65,9 +65,7 @@ class Board
     @width, @height = w, h
     @cells  = Array.new( @height ) { Array.new( @width, SPACE ) }
     if w * h == 64               # 8x8 or 4x16
-      h2, w2 = (h / 2).to_i, (w / 2).to_i
-      @cells[h2 - 1][w2 - 1] = '@'; @cells[h2 - 1][w2 - 0] = '@'
-      @cells[h2 - 0][w2 - 1] = '@'; @cells[h2 - 0][w2 - 0] = '@'
+      place( (w/2-1).to_i, (h/2-1).to_i, [ [0,0], [0,1], [1,0], [1,1] ], '@' )
     end
   end
 

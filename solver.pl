@@ -98,10 +98,7 @@ sub new_Board {
         }
     }
     if ( $width * $height == 64 ) {     # 8x8 or 4x16
-        $cells[ $height/2 - 1 ][ $width/2 - 1 ] = "@";
-        $cells[ $height/2 - 1 ][ $width/2 - 0 ] = "@";
-        $cells[ $height/2 - 0 ][ $width/2 - 1 ] = "@";
-        $cells[ $height/2 - 0 ][ $width/2 - 0 ] = "@";
+        place( $width/2-1, $height/2-1, [ [0,0], [0,1], [1,0], [1,1] ], "@" );
     }
 
     my @elems = (

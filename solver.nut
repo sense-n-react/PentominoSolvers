@@ -113,8 +113,7 @@ class Board
     cells = array( height, [] )
     foreach( idx, _ in cells ) { cells[ idx ] = array( width, SPACE ) }
     if ( w * h == 64 ) {        // 8x8 or 4x16
-      cells[h/2 - 1][w/2 - 1] = "@";   cells[h/2 - 1][w/2 - 0] = "@"
-      cells[h/2 - 0][w/2 - 1] = "@";   cells[h/2 - 0][w/2 - 0] = "@"
+      place( w/2 - 1, h/2 - 1,  [ [0,0], [0,1], [1,0], [1,1] ], "@" )
     }
   }
 

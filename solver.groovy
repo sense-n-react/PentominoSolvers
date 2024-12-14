@@ -75,10 +75,8 @@ class Board {
     height = h
     cells  = (0 ..< height).collect { (0 ..< width).collect { SPACE } }
     if ( w * h ==  64 ) {       // 8x8 or 4x16
-      int cx = w / 2
-      int cy = h / 2
-      cells[ cy - 1 ][ cx - 1 ] = "@";  cells[ cy - 1 ][ cx ] = "@";
-      cells[ cy     ][ cx - 1 ] = "@";  cells[ cy     ][ cx ] = "@";
+      int cx = w / 2 - 1;  int cy = h / 2 - 1
+      place( cx, cy, [ [0,0], [0,1], [1,0], [1,1] ], '@' )
     }
   }
 

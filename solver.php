@@ -118,11 +118,7 @@ class Board {
         $this->height = $h;
         $this->cells  = array_fill( 0, $h, array_fill( 0, $w, self::SPACE ) );
         if ( $w * $h == 64 ) {     // 8x8 or 4x16
-            $cx = $w / 2;  $cy = $h / 2;
-            $this->cells[ $cy - 1 ][ $cx - 1 ] = '@';
-            $this->cells[ $cy - 1 ][ $cx - 0 ] = '@';
-            $this->cells[ $cy - 0 ][ $cx - 1 ] = '@';
-            $this->cells[ $cy - 0 ][ $cx - 0 ] = '@';
+            $this->place( $w/2-1, $h/2-1, [[0,0],[1,0],[0,1],[1,1]], '@' );
         }
     }
 
