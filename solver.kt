@@ -100,10 +100,9 @@ class Board( val width: Int, val height: Int ) {
                 ArrayList( MutableList( width ) { SPACE } )
         })
         if ( width * height == 64 ) {   // 8x8 or 16x4
-            val cx = width  / 2
-            val cy = height / 2
-            cells[cy-1][cx-1] = '@';  cells[cy-1][cx-0] = '@'
-            cells[cy-0][cx-1] = '@';  cells[cy-0][cx-0] = '@'
+            place( Point( width  / 2 - 1, height / 2 - 1 ),
+                   listOf( Point(0,0), Point(0,1), Point(1,0), Point(1,1 ) ),
+                   '@' )
         }
     }
 
@@ -171,8 +170,7 @@ class Solver( val width: Int, val height: Int ) {
         }
         Unused = Piece( '!', listOf(), pc )      // dummy piece
         // limit the symmetry of 'F'
-        pc!!.figs.subList( if ( width == height ) 1 else 2,
-                           pc.figs.size).clear()
+        pc!!.figs.subList( if (width == height) 1 else 2, pc.figs.size ).clear()
     }
 
     fun solve( xy_: Point ) {

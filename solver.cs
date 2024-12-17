@@ -87,10 +87,9 @@ public class Board
             }
         }
         if ( width * height == 64 ) {
-            cells[ width/2 - 1, height/2 - 1] = '@';
-            cells[ width/2 - 0, height/2 - 1] = '@';
-            cells[ width/2 - 1, height/2 - 0] = '@';
-            cells[ width/2 - 0, height/2 - 0] = '@';
+            Fig hole = new Fig{ new int[] {0,0}, new int[] {0,1},
+                                new int[] {1,0}, new int[] {1,1} };
+            place( width/2 - 1, height/2 - 1, hole, '@' );
         }
         ELEMS = new string[][]{ elems[0].Split( ',' ), elems[1].Split( ',' ) };
     }

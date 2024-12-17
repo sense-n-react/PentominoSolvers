@@ -135,7 +135,11 @@ class Point
     public String toString()  { return "[" + x + "," + y + "]";  }
 }
 
-class Fig extends ArrayList<Point>{}
+class Fig extends ArrayList<Point>
+{
+    public Fig() { super(); }
+    public Fig( List<Point> list) { super( list );  }
+}
 
 ///////////////////////////////////////////////////
 
@@ -215,9 +219,10 @@ class Board
             }
         }
         if ( width * height == 64 ) {      // 8x8 or 4*16
-            int cx = width/2, cy = height/2;
-            cells[ cy - 1][ cx - 1] = '@';  cells[ cy - 1][ cx - 0] = '@';
-            cells[ cy - 0][ cx - 1] = '@';  cells[ cy - 0][ cx - 0] = '@';
+            place( new Point( width/2-1, height/2-1 ),
+                   new Fig( Arrays.asList( new Point(0,0), new Point(0,1),
+                                           new Point(1,0), new Point(1,1) ) ),
+                   '@' );
         }
     }
 

@@ -10,8 +10,8 @@ type Fig = (int * int) list
 
 let mutable debugFlag = false
 
-let pieceDef = 
-    let pieceStrings = [
+let pieceDef =
+    let pieceDOC = [
         "+-------+-------+-------+-------+-------+-------+"
         "|       |   I   |  L    |  N    |       |       |"
         "|   F F |   I   |  L    |  N    |  P P  | T T T |"
@@ -26,14 +26,9 @@ let pieceDef =
         "+-------+-------+-------+-------+-------+-------+"
     ]
     let dic = Dictionary<char, Fig>()
-    for y, line in pieceStrings |> List.indexed do
-        for x, char in line |> Seq.indexed do
-            if not (char = ' ' || char = '|') then
-                let coord = (x / 2, y)
-                if dic.ContainsKey(char) then
-                    dic.[char] <- coord :: dic.[char]
-                else
-                    dic.[char] <- [coord]
+    for y, line in pieceDOC |> List.indexed do
+        for x, c in line |> Seq.indexed do
+            dic[c] <- (x / 2, y) :: if dic.ContainsKey c then dic[c] else []
     dic
 
 //////////////////////////////////////////////////////////////////
@@ -41,6 +36,7 @@ let pieceDef =
 type Piece(id: char, figDef: Fig, next: Piece option) =
     member val Id = id
     member val Next = next with get, set
+
     member val Figs =
         [0..7]
         |> List.map (fun r_f ->                       // rotate and flip
@@ -63,56 +59,61 @@ type Piece(id: char, figDef: Fig, next: Piece option) =
 
 //////////////////////////////////////////////////////////////////
 
-type Board(width: int, height: int)  =
+
+type Board(width: int, height: int) as self =
     let cells = Array.init height (fun _ -> Array.create width ' ' )
 
-    do
-        if width * height = 64 then
-            let ox, oy = width / 2 - 1, height / 2 - 1
-            [(0,0); (0,1); (1,0); (1,1) ]
-            |> List.iter (fun (x, y) -> cells[ oy + y ][ ox + x ] <- '@' )
-
     static let rec transpose = function
-        | (_::_)::_ as M -> 
+        | (_::_)::_ as M ->
              List.map List.head M :: transpose (List.map List.tail M)
         | _ -> []
 
     static let ELEMS =
-        [  "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---";
-           "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
+        [ "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---";
+          "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
         ]
-        |> List.map (fun s -> s.Split( ',' ) |> Array.toList )
+        |> List.map (fun s -> s.Split ',' |> Array.toList )
         |> transpose
 
-    member this.Width  = width
-    member this.Height = height
+    do
+        if width * height = 64 then
+            self.Place (width/2-1) (height/2-1) [(0,0);(0,1);(1,0);(1,1)] '@'
 
-    member this.At(x, y) =
-        if x >= 0 && x < this.Width && y >= 0 && y < this.Height
+
+    member this.W  = width
+    member this.H  = height
+
+
+    member this.At x y =
+        if x >= 0 && x < this.W && y >= 0 && y < this.H
             then cells[y][x]  else  '?'
 
-    member this.Place(x, y, fig, id) =
+
+    member this.Place x y fig id =
         fig |> List.iter (fun (dx, dy) -> cells[y + dy][x + dx] <- id )
 
-    member this.Check(x, y, fig) =
-        fig |> List.forall (fun (dx, dy) -> this.At(x + dx, y + dy) = ' ')
 
-    member this.FindSpace(x_, y_) = 
+    member this.Check x y fig =
+        fig |> List.forall (fun (dx, dy) -> this.At (x + dx) (y + dy) = ' ')
+
+
+    member this.FindSpace x_  y_ =
         let mutable (x, y) = (x_, y_)
-        while this.At(x, y) <> ' ' do
+        while this.At x y <> ' ' do
             x <- x + 1
-            if x = width then x <- 0;  y <- y + 1
+            if x = this.W then x <- 0;  y <- y + 1
         (x, y)
 
+
     member bd.Render() =
-       [0..bd.Height] |> List.map (fun y ->
-           [0..bd.Width] |> List.map (fun x ->
-               ELEMS.[ (if bd.At(x+0, y+0) <> bd.At(x+0, y-1) then 1 else 0)+
-                       (if bd.At(x+0, y-1) <> bd.At(x-1, y-1) then 2 else 0)+
-                       (if bd.At(x-1, y-1) <> bd.At(x-1, y+0) then 4 else 0)+
-                       (if bd.At(x-1, y+0) <> bd.At(x+0, y+0) then 8 else 0) ]
-           )
-           |> transpose |> List.map (fun e -> e |> String.concat "")
+       [0..bd.H] |> List.map (fun y ->
+         [0..bd.W] |> List.map (fun x ->
+           ELEMS[ (if bd.At (x+0) (y+0) <> bd.At (x+0) (y-1) then 1 else 0)+
+                  (if bd.At (x+0) (y-1) <> bd.At (x-1) (y-1) then 2 else 0)+
+                  (if bd.At (x-1) (y-1) <> bd.At (x-1) (y+0) then 4 else 0)+
+                  (if bd.At (x-1) (y+0) <> bd.At (x+0) (y+0) then 8 else 0) ]
+         )
+         |> transpose |> List.map (fun e -> e |> String.concat "")
        )
        |> List.concat |> String.concat "\n"
 
@@ -130,43 +131,42 @@ type Solver(width: int, height: int) =
             pc <- Some( Piece(id, pieceDef.[id], pc) )
         )
         unused <- Some( Piece('!', [(0,0)], pc) )    // pc.Id = 'F'
+        // limit the symmetry of 'F'
         pc.Value.Figs <-
             pc.Value.Figs |> List.take (if width = height then 1 else 2)
 
-    member this.Solve(x, y) =
+    member this.Solve x y =
         let mutable prev = unused.Value
         if prev.Next.IsSome then
-            let x, y = board.FindSpace( x, y )
+            let x, y = board.FindSpace x y
             while prev.Next.IsSome do
                 let mutable pc = prev.Next.Value
                 prev.Next <- pc.Next
                 pc.Figs |> List.iter (fun fig ->
-                    if board.Check(x, y, fig ) then
-                        board.Place(x, y, fig, pc.Id )
-                        this.Solve(x, y)
-                        board.Place(x, y, fig, ' ')
+                    if board.Check x y fig then
+                        board.Place x y fig pc.Id
+                        this.Solve x y
+                        board.Place x y fig ' '
                 )
                 prev.Next <- Some pc
                 prev      <- pc
          else
              solutions <- solutions + 1
              let curs_up =
-                 if solutions > 1 then $"\u001b[%d{board.Height*2+2}A" else ""
-             printfn "%s%s%d" curs_up (board.Render()) solutions 
- 
+                 if solutions > 1 then $"\u001b[%d{board.H*2+2}A" else ""
+             printfn "%s%s%d" curs_up (board.Render()) solutions
+
 //////////////////////////////////////////////////////////////////
 
 
-let args = Environment.GetCommandLineArgs()
-debugFlag <- args |> Array.exists ((=) "--debug")
-
 let mutable size = (6, 10)
-for arg in args do
-    let check (w, h) = w >= 3 && h >= 3 && (w * h = 60 || w * h = 64)
-    match arg.Split('x') |> Array.map (fun s -> System.Int32.TryParse(s)) with
-    | [| (true, w); (true, h) |] when check(w, h) -> size <- (w, h)
+for arg in Environment.GetCommandLineArgs() do
+    if arg = "--debug" then debugFlag <- true
+    let check w h = w >= 3 && h >= 3 && (w * h = 60 || w * h = 64)
+    match arg.Split 'x' |> Array.map (fun s -> System.Int32.TryParse s) with
+    | [| (true, w); (true, h) |] when check w h -> size <- (w, h)
     | [| (true, w); (true, h) |]  -> printfn "Wrong size: %s" arg
     | _ -> ()
 
 let solver = Solver( size )
-solver.Solve(0, 0)
+solver.Solve 0 0

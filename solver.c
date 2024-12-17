@@ -150,30 +150,6 @@ typedef struct Board
 } Board;
 
 
-Board *
-new_board( int w, int h )
-{
-  new( this, Board );
-
-  this->width  = w;
-  this->height = h;
-
-  this->cells = malloc( sizeof(int*) * h );
-
-  for ( int i = 0; i < h; ++i ) {
-    this->cells[ i ] = malloc( sizeof(int) * w );
-    for ( int j = 0; j < w; ++j ) {
-      this->cells[ i ][ j ] = SPACE;
-    }
-  }
-  if ( w * h == 64 ) {     // 8x8 or 4x16
-    this->cells[ h/2 -1][ w/2 -1] = '@'; this->cells[ h/2 -1][ w/2 ] = '@';
-    this->cells[ h/2   ][ w/2 -1] = '@'; this->cells[ h/2   ][ w/2 ] = '@';
-  }
-  return this;
-}
-
-
 char
 at( const Board *this, int x, int y )
 {
@@ -196,7 +172,7 @@ check( const Board *this, const Point* o, const Fig* fig )
 
 
 void
-place( Board *this, const Point* o, char id, const Fig* fig )
+place( Board *this, const Point* o, const Fig* fig, char id )
 {
   for ( size_t i = 0; i < numOf(fig->pt); ++i ) {
     this->cells[ o->y + fig->pt[i].y ][ o->x + fig->pt[i].x ] = id;
@@ -214,6 +190,31 @@ find_space( const Board *this, const Point* o, Point *result )
   }
   result->x = x;
   result->y = y;
+}
+
+
+Board *
+new_board( int w, int h )
+{
+  new( this, Board );
+
+  this->width  = w;
+  this->height = h;
+
+  this->cells = malloc( sizeof(int*) * h );
+
+  for ( int i = 0; i < h; ++i ) {
+    this->cells[ i ] = malloc( sizeof(int) * w );
+    for ( int j = 0; j < w; ++j ) {
+      this->cells[ i ][ j ] = SPACE;
+    }
+  }
+  if ( w * h == 64 ) {     // 8x8 or 4x16
+    Fig hole = {{ {0,0},{0,1},{1,0},{1,1},{1,1} }};
+    Point  o = { w/2 -1, h/2 - 1 };
+    place( this, &o, &hole, '@' );
+  }
+  return this;
 }
 
 //         2
@@ -294,9 +295,9 @@ solve( Solver *this, const Point *xy_ )
 
       for ( const Fig *fig = pc->figs; fig < pc->fig_end; ++fig ) {
         if ( check( this->board, &xy, fig ) ) {
-          place( this->board, &xy, pc->id, fig );
+          place( this->board, &xy, fig, pc->id );
           solve( this, &xy );
-          place( this->board, &xy, SPACE, fig );
+          place( this->board, &xy, fig, SPACE );
         }
       }
 

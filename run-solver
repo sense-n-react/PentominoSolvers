@@ -47,17 +47,17 @@ EOT
   r
 }
 
-def by_Ruby;       run     "ruby  solver.rb  #{@opt}"; end
+def by_Ruby;       run  "ruby  #{@src} #{@opt}"; end
 def by_Python
   cmd = select_cmd( "python3",  "python" )
-  run "#{cmd} -u solver.py  #{@opt}" # -u :unbuffered
+  run "#{cmd} -u #{@src}  #{@opt}" # -u :unbuffered
 end
 
-def by_Lua;        run       "lua solver.lua #{@opt}"; end
-def by_Squirrel;   run        "sq solver.nut #{@opt}"; end
-def by_Julia;      run     "julia solver.jl  #{@opt}"; end
-def by_Javascript; run      "node solver.js  #{@opt}"; end
-def by_Groovy;     run    "groovy solver.groovy #{@opt}"; end
+def by_Lua;        run    "lua #{@src} #{@opt}"; end
+def by_Squirrel;   run     "sq #{@src} #{@opt}"; end
+def by_Julia;      run  "julia #{@src} #{@opt}"; end
+def by_Javascript; run   "node #{@src} #{@opt}"; end
+def by_Groovy;     run "groovy #{@src} #{@opt}"; end
 
 def by_Typescript
   run "tsc --target es2019 --module commonjs --strict solver-ts.ts",
@@ -67,26 +67,26 @@ end
 def by_Cs
   if exists?( "mono" )
     csc = select_cmd( "mcs", "csc" )
-    run "#{csc} -nologo -optimize+ -out:solver.cs.out solver.cs",
-        "mono solver.cs.out #{@opt}"
+    run "#{csc} -nologo -optimize+ -out:#{@src}.out #{@src}",
+        "mono #{@src}.out #{@opt}"
   else
     # cygwin/windows
-    run "csc -nologo -optimize+ -out:solver.cs.out solver.cs",
-        "./solver.cs.out #{@opt}"
+    run "csc -nologo -optimize+ -out:#{@src}.out #{@src}",
+        "./#{@src}.out #{@opt}"
   end
 end
 
 def by_Perl
-  run "perl solver.pl #{@opt}"
+  run "perl #{@src} #{@opt}"
 end
 
 def by_Awk
   cmd = select_cmd( "gawk", "awk" )
-  run "#{cmd} -f solver.awk -- #{@opt}"
+  run "#{cmd} -f #{@src} -- #{@opt}"
 end
 
 def by_Php
-  run "php solver.php #{@opt}"
+  run "php #{@src} #{@opt}"
 end
 
 def by_Java
@@ -95,64 +95,71 @@ def by_Java
 end
 
 def by_Kotlin
-  run "kotlinc solver.kt -include-runtime -d solver.jar",
+  run "kotlinc #{@src} -include-runtime -d solver.jar",
       "kotlin solver.jar #{@opt}"
 end
 
 def by_Go
-  run "go run solver.go #{@opt}"
+  run "go run #{@src} #{@opt}"
 end
 
 def by_Rust
   if exists?( "rust-script" )
-    run "rust-script solver.rs #{@opt}"
+    run "rust-script #{@src} #{@opt}"
   else
-    run "rustc -O -o solver.rs.out solver.rs",
-        "./solver.rs.out #{@opt}"
+    run "rustc -O -o #{@src}.out #{@src}",
+        "./#{@src}.out #{@opt}"
   end
 end
 
 def by_Swift
   if exists?( "swiftc" )
-    run "swiftc -Ounchecked -o solver.swift.out solver.swift",
-        "./solver.swift.out #{@opt}"
+    run "swiftc -Ounchecked -o #{@src}.out #{@src}",
+        "./#{@src}.out #{@opt}"
   else
-    run "swift solver.swift #{@opt}"
+    run "swift #{@src} #{@opt}"
   end
 end
 
 def by_Lisp
   if exists?( "sbcl" )
-    run "sbcl --script solver.lisp #{@opt}"
+    run "sbcl --script #{@src} #{@opt}"
   else
-    run "clisp -q -c solver.lisp -o solver.lisp.fas",
-        "clisp solver.lisp.fas #{@opt}"
+    run "clisp -q -c #{@src} -o #{@src}.fas",
+        "clisp #{@src}.fas #{@opt}"
   end
 end
 
 def by_C
   cc = select_cmd( "clang",  "gcc" )
-  run "#{cc} -o solver.c.out -O2 -Wall solver.c",
-      "./solver.c.out #{@opt}"
+  run "#{cc} -o #{@src}.out -O2 -Wall #{@src}",
+      "./#{@src}.out #{@opt}"
 end
 
 def by_Cpp
   cpp = select_cmd( "clang++",  "g++" )
-  run "#{cpp} -o solver.cpp.out -O2 -Wall -std=c++17 solver.cpp",
-      "./solver.cpp.out #{@opt}"
+  run "#{cpp} -o #{@src}.out -O2 -Wall -std=c++17 #{@src}",
+      "./#{@src}.out #{@opt}"
 end
 
 def by_Crystal
-  run "crystal build --release -o solver.cr.out solver.cr",
-      "./solver.cr.out #{@opt}"
+  run "crystal build --release -o #{@src}.out #{@src}",
+      "./#{@src}.out #{@opt}"
 end
 
 def by_Elixir
-  run "elixir ./solver.exs #{@opt}"
+  run "elixir ./#{@src} #{@opt}"
 end
 
 def by_Fs
-  run "dotnet fsi ./solver.fsx #{@opt}"
+  if exists?( "fsi" )
+    run "fsi --optimize+ #{@src} #{@opt}"
+  elsif exists?( "fsc" )
+    run "fsc --optimize+ -o #{@src}.out #{@src}",
+        "./#{@src}.out #{@opt}"
+  else
+    run "dotnet fsi --optimize+ #{@src} #{@opt}"
+  end
 end
 
 ###################################
@@ -190,20 +197,25 @@ end
 
 
 def main()
-  @progs = $O[:all] ? PROG_LIST.keys : ARGV.map{ |s| s.to_sym }
+  @lang_list = $O[:all] ? PROG_LIST.keys : ARGV.map{ |s| s.to_sym }
 
   @opt   = [ $O[:debug] ? "--debug" : "", $O[:size].to_s ].join( " " ).strip
 
   rename_list = { Cpp: 'C++', Cs: 'C#', Fs: 'F#' }
-  @progs.each do |pg|
-    pg = PROG_LIST.find{ |k,ext| k == pg || ext == pg }.to_a[0] || pg
-    method = "by_#{pg.capitalize}".to_sym
+  @lang_list.each do |lng|
+    lang, ext = PROG_LIST.find{ |k,v| k.upcase == lng.upcase || v == lng }
+    if lang.nil?
+      puts "#{lng}? skip it"
+      next
+    end
+    @src = "solver.#{ext}"
+    method = "by_#{lang.capitalize}".to_sym
     if self.respond_to?( method, true )
-      puts "== #{ (rename_list[ pg ] || pg ).capitalize } =="
+      puts "== #{ (rename_list[ lang ] || lang ).capitalize } =="
       ret = send( method )
       break  unless ret
     else
-      puts "#{pg} ?"
+      puts "#{lang} ?"
     end
   end
 end
