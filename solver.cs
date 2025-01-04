@@ -76,6 +76,11 @@ public class Board
     public  int  width, height;
     char [,]     cells;
 
+    static Board()
+    {
+        ELEMS = new string[][]{ elems[0].Split( ',' ), elems[1].Split( ',' ) };
+    }
+
     public Board( int w, int h )
     {
         width  = w;
@@ -91,7 +96,6 @@ public class Board
                                 new int[] {1,0}, new int[] {1,1} };
             place( width/2 - 1, height/2 - 1, hole, '@' );
         }
-        ELEMS = new string[][]{ elems[0].Split( ',' ), elems[1].Split( ',' ) };
     }
 
     char at( int x, int y )
@@ -132,7 +136,7 @@ public class Board
         "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---",
         "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   ",
     };
-    static string[][] ELEMS;
+    static string[][] ELEMS;    // initialized in static Board()
 
     public string render()
     {
