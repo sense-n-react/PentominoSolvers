@@ -144,6 +144,11 @@ sub find_space {
 }
 
 
+#         2
+# (-1,-1) | (0,-1)
+#   ---4--+--1----
+# (-1, 0) | (0, 0)
+#         8
 sub render {
     my @lines = ();
     for ( my $y = 0; $y <= $height; $y++ ) {

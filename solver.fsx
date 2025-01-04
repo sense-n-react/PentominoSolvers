@@ -105,6 +105,11 @@ type Board(width: int, height: int) as self =
         (x, y)
 
 
+    //         2
+    // (-1,-1) | (0,-1)
+    //   ---4--+--1----
+    // (-1, 0) | (0, 0)
+    //         8
     member bd.Render() =
        [0..bd.H] |> List.map (fun y ->
          [0..bd.W] |> List.map (fun x ->

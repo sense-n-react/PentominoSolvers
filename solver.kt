@@ -132,7 +132,7 @@ class Board( val width: Int, val height: Int ) {
 
     //         2
     // (-1,-1) | (0,-1)
-    //     4 --+-- 1
+    //  ----4--+--1----
     // (-1, 0) | (0, 0)
     //         8
     val ELEMS = transpose(

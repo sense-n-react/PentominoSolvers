@@ -142,6 +142,11 @@
     (list x y))
 
 
+;;         2
+;; (-1,-1) | (0,-1)
+;;   ---4--+--1----
+;; (-1, 0) | (0, 0)
+;;         8
 (defun render ()
   (let ((lines '())
         (cmp (lambda (x y u v n) (if (string/= (at x y) (at u v)) n 0 ))))
