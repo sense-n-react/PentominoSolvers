@@ -232,7 +232,6 @@ end  # class Piece
 class Grid
   BITs64 = Array.new(64) {|b| 1 << b }  # LSB が (x,y,z) = (0,0,0)
   BITPOS = (0..64).each_with_object( {} ) { |i, h|  h[ 1 << i ] = i }
-  SPACE = '.'
 
   attr_reader :width, :height, :depth, :size, :sp_size
   attr_reader :bits, :bp2pt, :symms
@@ -298,20 +297,28 @@ class Grid
   # figs  :  [fig1, fig2, ....]
   def render( figs, opt_print = false )
     # array
-    grid = Array.new( @size ){ SPACE }
-    ids  = Array.new( @depth ) { "" }
-    # WxHxD に Piece ID を書き込む
+    grid = Array.new( @size ){ :SPACE }
+    id = ->( *pt ) { is_inside?( *pt )? grid[ offset( *pt ) ] : nil }
+    # Piece ID の表示
+    disp_id = Array.new( @size ){ opt_print ? ' ' : '.' }
+
     figs.each{ | fig |
       pc_id = fig.pc.id
-      fig.pts.each {| x,y,z |
-        grid[ offset( x,y,z ) ] = pc_id
-        if ids[z] !~ /#{pc_id}/i
-          ids[z] << ( (z == fig.pts[0][2] )? pc_id : pc_id.downcase )
-        end
+      fig.pts.each {|pt|
+        grid[ offset( *pt ) ]    = pc_id
+        disp_id[ offset( *pt ) ] = ' '
       }
-    }
 
-    id = ->( *pt ) { is_inside?( *pt )? grid[ offset( *pt ) ] : '?' }
+      if opt_print
+        last_z, ch = -1, fig.pc.id
+        fig.pts.each {|x,y,z|
+          next if  last_z == z
+          disp_id[ offset( x,y,z ) ]  = ch;  ch = ch.downcase
+          u, v = 1, 0
+          4.times{ last_z = z  if fig.pc.id == id.(x+u, y+v, z); u,v = v,-u }
+        }
+      end
+    }
 
     Array.new( @height + 1 ) {|y|
       Array.new( @depth ) { |z|
@@ -320,14 +327,7 @@ class Grid
                  ( ( id.( x,   y-1, z ) != id.( x-1, y-1, z ) )? 2: 0 ) |
                  ( ( id.( x-1, y-1, z ) != id.( x-1, y  , z ) )? 4: 0 ) |
                  ( ( id.( x-1, y  , z ) != id.( x,   y  , z ) )? 8: 0 )
-          pc_id = id.( x, y, z )
-          ch = ( pc_id == SPACE ) ? '.' : ' '
-          if opt_print && pc_id =~ /[A-Z]/
-            if ( idx = ids[z].index( /#{pc_id}/i ) ) != nil
-              ch = ids[z][idx] 
-              ids[z][idx] = ' '
-            end
-          end
+          ch = id.(x,y,z) ? disp_id[ offset(x,y,z) ] : ' '
           [ BORDER[0][code], BORDER[1][code].clone.tap{|s| s[2] = ch } ]
         }.transpose.map(&:join)
       }.transpose.map(&:join)
