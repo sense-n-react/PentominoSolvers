@@ -3,166 +3,141 @@
 
 require 'optparse'
 
-PROG_LIST = { Ruby:       :rb,          Python:     :py,
-              Lua:        :lua,         Squirrel:   :nut,
-              Julia:      :jl,          JavaScript: :js,
-              TypeScript: :ts,          Groovy:     :groovy,
-              Perl:       :pl,          Awk:        :awk,
-              Php:        :php,
-              C:          :c,           Cpp:        :cpp,
-              Cs:         :cs,          Java:       :java,
-              Kotlin:     :kt,          Go:         :go,
-              Rust:       :rs,          Swift:      :swift,
-              Lisp:       :lisp,        Crystal:    :cr,
-              Elixir:     :exs,         Fs:         :fsx
-            }
+solver :Ruby, :rb
+solver :Python, :py do ['python3 -u', 'python -u'] end
+solver :Lua
+solver :Squirrel,   :nut, 'sq'
+solver :Julia,      :jl
+solver :Javascript, :js,  'node'
 
-$O = {}
-exit(1) unless ARGV.options{|opt|
-  opt.banner =<<EOT
-Usage:  #{File.basename(__FILE__)} OPTION... ext...
-    Execute PENTOMINO Solvers written in various programming languages.
-    ext:
-#{     PROG_LIST.values.each_slice(10).to_a.
-         map{ |e| e.join(', ') }.
-         map{ |l| "      #{l}" }.
-         join( "\n" )
+solver :Typescript, :ts do |l|
+  "tsc --target es2019 --module commonjs --strict #{l.src} &&
+     node #{l.src.sub(/\.ts$/, ".js")} #{l.o} "
+end
+
+solver :Perl, :pl
+solver :Php
+solver :Groovy
+
+solver :Awk do |l|
+  awk = select_cmd( "gawk", "awk" )
+  "#{awk} -f #{l.src} -- #{l.o}"
+end
+
+solver :C do |l|
+  cc = select_cmd( "clang", "gcc" )
+  "#{cc} -o #{l.src}.out -O2 -Wall #{l.src} && ./#{l.src}.out #{l.o}"
+end
+
+solver :'C++', :cpp do |l|
+  cc = select_cmd( "clang++", "g++" )
+  "#{cc} -o #{l.src}.out -O2 -Wall -std=c++17 #{l.src} && ./#{l.src}.out #{l.o}"
+end
+
+solver :'C#', :cs do |l|
+  mono = exists?( "mono" ) ? "mono" : ''
+  csc  = select_cmd( "mcs", "csc" )
+  "#{csc} -nologo -optimize+ -out:#{l.src}.out #{l.src} &&
+     #{mono} ./#{l.src}.out #{l.o}"
+end
+
+solver :Java do |l|
+  "javac -d build #{l.src} &&
+     java -cp build #{l.src.sub(/\.\w+$/, '')} #{l.o}"
+end
+
+solver :Kotlin, :kt do |l|
+  "kotlinc #{l.src} -include-runtime -d solver.jar &&
+     kotlin solver.jar #{l.o}"
+end
+
+solver :Go,  'go run'
+
+solver :Rust, :rs do |l|
+  [ "rust-script #{l.src} #{l.o}",
+    "rustc -O -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}" ]
+end
+
+solver :Swift do |l|
+  [ "swiftc -Ounchecked -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}",
+    "swift #{l.src} #{l.o}" ]
+end
+
+solver :Lisp do |l|
+  [ "sbcl --script #{l.src} #{l.o}",
+    "clisp -q -c #{l.src} -o #{l.src}.fas &&  clisp #{l.src}.fas #{l.o}" ]
+end
+
+solver :Crystal, :cr do |l|
+  "crystal build --release -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}"
+end
+
+solver :Elixir, :exs
+
+solver :'F#', :fsx do |l|
+  [ "fsi --optimize+ #{l.src} #{l.o}",
+    "fsc --optimize+ -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}",
+    "dotnet fsi --optimize+ #{l.src} #{l.o}" ]
+end
+
+###########################################################
+
+BEGIN {
+  LANG_DEF = {}
+  Lang     = Struct.new( 'Lang', :name, :ext, :prog, :src, :o )
+
+  def solver lang, *arg, &block
+    arg.unshift(nil)  unless arg[0].is_a?(Symbol)   # ext
+    ext  = arg[0] || lang.to_s.downcase
+    prog = block_given? ? block : Proc.new{ (arg[1] || lang.to_s.downcase) }
+    src  = case lang
+           when :Java;       "Solver.#{ext}"
+           when :Typescript; "solver-ts.#{ext}"
+           else              "solver.#{ext}"
+           end
+    LANG_DEF[ lang ] = Lang.new( lang, ext.to_s, prog, src )
+  end
 }
 
-    ex) ./run-solver --size 8x8 rb py
+###########################################################
+
+def options
+  $O = {compile: true}
+
+  exit(1) unless ARGV.options{|opt|
+    opt.banner =<<EOT
+Usage:  #{File.basename(__FILE__)} OPTION... ext...
+    Execute PENTOMINO Solvers written in various programming languages.
+
+    Lang/ext:
+#{    LANG_DEF.values.sort_by{ |lang| lang.name }.
+        each_with_object( [[]] ) do |lang,lines|
+          lines[-1] << "#{lang.name}/#{lang.ext}"
+          lines << [lines[-1].pop]  if lines[-1].join( ', ' ).size > 60
+        end.map { |words| '      ' + words.join( '  ' ) }.join( "\n" )
+}
+
+    ex: ./run-solver --size 8x8 ruby py
         # ruby solver.rb 8x8
         # python3 solver.py 8x8
 
 EOT
-  opt.on( '-d', '--debug', "execute with '--debug'" )
-  opt.on( '-n', '--suppress' )
-  opt.on( '-s', '--size=WxH' ) { |v| v =~ /^\d+x\d+$/ ? v : nil }
-  opt.on( '-a', '--all',  "execute all languages" )
+    opt.on( '-a', '--all',  "execute all languages" )
+    opt.on( '-s', '--size=WxH' ) { |v| v =~ /^\d+x\d+$/ ? v : nil }
+    opt.on( '-d', '--debug', "execute with '--debug'" )
+    opt.on( '-n', '--suppress' )
+    opt.on( '--[no-]compile' )
 
-  r = opt.parse!( into: $O )
-  if ARGV.empty? && !$O[:all]
-    puts opt.help
-    exit
-  end
-  r
-}
-
-def by_Ruby;       run  "ruby  #{@src} #{@opt}"; end
-def by_Python
-  cmd = select_cmd( "python3",  "python" )
-  run "#{cmd} -u #{@src}  #{@opt}" # -u :unbuffered
+    r = opt.parse!( into: $O )
+    if ARGV.empty? && !$O[:all]
+      puts opt.help
+      exit
+    end
+    r
+  }
 end
 
-def by_Lua;        run    "lua #{@src} #{@opt}"; end
-def by_Squirrel;   run     "sq #{@src} #{@opt}"; end
-def by_Julia;      run  "julia #{@src} #{@opt}"; end
-def by_Javascript; run   "node #{@src} #{@opt}"; end
-def by_Groovy;     run "groovy #{@src} #{@opt}"; end
-
-def by_Typescript
-  run "tsc --target es2019 --module commonjs --strict solver-ts.ts",
-      "node solver-ts.js #{@opt}"
-end
-
-def by_Cs
-  if exists?( "mono" )
-    csc = select_cmd( "mcs", "csc" )
-    run "#{csc} -nologo -optimize+ -out:#{@src}.out #{@src}",
-        "mono #{@src}.out #{@opt}"
-  else
-    # cygwin/windows
-    run "csc -nologo -optimize+ -out:#{@src}.out #{@src}",
-        "./#{@src}.out #{@opt}"
-  end
-end
-
-def by_Perl
-  run "perl #{@src} #{@opt}"
-end
-
-def by_Awk
-  cmd = select_cmd( "gawk", "awk" )
-  run "#{cmd} -f #{@src} -- #{@opt}"
-end
-
-def by_Php
-  run "php #{@src} #{@opt}"
-end
-
-def by_Java
-  run  "javac -d build Solver.java",
-       "java -cp build Solver #{@opt}"
-end
-
-def by_Kotlin
-  run "kotlinc #{@src} -include-runtime -d solver.jar",
-      "kotlin solver.jar #{@opt}"
-end
-
-def by_Go
-  run "go run #{@src} #{@opt}"
-end
-
-def by_Rust
-  if exists?( "rust-script" )
-    run "rust-script #{@src} #{@opt}"
-  else
-    run "rustc -O -o #{@src}.out #{@src}",
-        "./#{@src}.out #{@opt}"
-  end
-end
-
-def by_Swift
-  if exists?( "swiftc" )
-    run "swiftc -Ounchecked -o #{@src}.out #{@src}",
-        "./#{@src}.out #{@opt}"
-  else
-    run "swift #{@src} #{@opt}"
-  end
-end
-
-def by_Lisp
-  if exists?( "sbcl" )
-    run "sbcl --script #{@src} #{@opt}"
-  else
-    run "clisp -q -c #{@src} -o #{@src}.fas",
-        "clisp #{@src}.fas #{@opt}"
-  end
-end
-
-def by_C
-  cc = select_cmd( "clang",  "gcc" )
-  run "#{cc} -o #{@src}.out -O2 -Wall #{@src}",
-      "./#{@src}.out #{@opt}"
-end
-
-def by_Cpp
-  cpp = select_cmd( "clang++",  "g++" )
-  run "#{cpp} -o #{@src}.out -O2 -Wall -std=c++17 #{@src}",
-      "./#{@src}.out #{@opt}"
-end
-
-def by_Crystal
-  run "crystal build --release -o #{@src}.out #{@src}",
-      "./#{@src}.out #{@opt}"
-end
-
-def by_Elixir
-  run "elixir ./#{@src} #{@opt}"
-end
-
-def by_Fs
-  if exists?( "fsi" )
-    run "fsi --optimize+ #{@src} #{@opt}"
-  elsif exists?( "fsc" )
-    run "fsc --optimize+ -o #{@src}.out #{@src}",
-        "./#{@src}.out #{@opt}"
-  else
-    run "dotnet fsi --optimize+ #{@src} #{@opt}"
-  end
-end
-
-###################################
+###########################################################
 
 def exists?( bin )
   %x[ type #{bin} > /dev/null 2>&1 ]
@@ -170,7 +145,7 @@ def exists?( bin )
 end
 
 def select_cmd( *progs )
-  progs.select{ |prg| exists?( prg ) }[0] || progs[-1]
+  progs.select{ |prg| exists?( prg.split[0] ) }[0] || progs[-1]
 end
 
 def run( *cmds )
@@ -195,29 +170,38 @@ def run( *cmds )
   return true
 end
 
+###########################################################
 
 def main()
-  @lang_list = $O[:all] ? PROG_LIST.keys : ARGV.map{ |s| s.to_sym }
+  options()
 
-  @opt   = [ $O[:debug] ? "--debug" : "", $O[:size].to_s ].join( " " ).strip
+  args = $O[:all] ?
+            LANG_DEF.values.map { |lang| lang.ext } :
+            ARGV.map{ |s| s }
 
-  rename_list = { Cpp: 'C++', Cs: 'C#', Fs: 'F#' }
-  @lang_list.each do |lng|
-    lang, ext = PROG_LIST.find{ |k,v| k.upcase == lng.upcase || v == lng }
+  args.each do |arg|
+    lang = LANG_DEF.values.find{ |lang|
+      lang.name.to_s.upcase == arg.upcase || lang.ext == arg
+    }
     if lang.nil?
-      puts "#{lng}? skip it"
+      puts "#{arg}? skip it"
       next
     end
-    @src = "solver.#{ext}"
-    method = "by_#{lang.capitalize}".to_sym
-    if self.respond_to?( method, true )
-      puts "== #{ (rename_list[ lang ] || lang ).capitalize } =="
-      ret = send( method )
-      break  unless ret
-    else
-      puts "#{lang} ?"
+
+    lang.o = [ $O[:debug] ? "--debug" : "", $O[:size].to_s ].join( " " ).strip
+
+    puts "== #{lang.name} =="
+    case result = lang.prog.call( lang )
+    when String, Array
+      cmd  = select_cmd( *result )
+      cmd  = "#{cmd} #{lang.src} #{lang.o}"  if cmd !~/#{lang.src}/
+      cmds = cmd.split( '&&' ).map{ |c| c.gsub(/\s+/, ' ').strip }
+      cmds.shift  if cmds.size > 1 && $O[:compile] == false
+      result = run *cmds
     end
-  end
+    puts "#{lang.name}: failed\n"  unless result
+  end # args
+
 end
 
 begin
