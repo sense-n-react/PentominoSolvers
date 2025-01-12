@@ -197,16 +197,15 @@ function render( bd,   code, line, lines, x, y, d ) {
     lines = ""
     for ( y = 1; y <= bd[ "Height" ] + 1; y++ ) {
         for ( d = 1; d <= 2; d++ ) {
-            line = ""
             for ( x = 1; x <= bd[ "Width" ] + 1; x++ ) {
                 code = 1 + \
                     ( at( bd, x+0, y+0 ) != at( bd, x+0, y-1 )? 1 : 0 ) + \
                     ( at( bd, x+0, y-1 ) != at( bd, x-1, y-1 )? 2 : 0 ) + \
                     ( at( bd, x-1, y-1 ) != at( bd, x-1, y+0 )? 4 : 0 ) + \
                     ( at( bd, x-1, y+0 ) != at( bd, x+0, y+0 )? 8 : 0 )
-                line = line  ELEMS[ d, code ]
+                lines = lines  ELEMS[ d, code ]
             }
-            lines = lines line "\n"
+            if ( y < bd[ "Height" ] + 1  ||  d < 2 ) { lines = lines "\n"  }
         }
     }
     return lines
@@ -254,7 +253,7 @@ function solve( bd, x, y,   xy, prev, pc, fig, curs_up ) {
         bd[ "solutions" ]++
         curs_up = ""
         if ( bd[ "solutions" ] > 1 ) {
-            curs_up = sprintf( "\033[%dA", bd[ "Height" ] * 2 + 3 )
+            curs_up = sprintf( "\033[%dA", bd[ "Height" ] * 2 + 2 )
         }
         printf( "%s%s%d\n", curs_up, render( bd ), bd[ "solutions" ] )
         # getline input

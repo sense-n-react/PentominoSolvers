@@ -209,7 +209,7 @@ class Solver {
             solutions += 1
             let curs_up = solutions > 1 ?
               String( format: "\u{001b}[%dA", board.height * 2 + 2 ) : ""
-            print( curs_up + board.render(), solutions )
+            print( curs_up, board.render(), solutions, separator: "" )
         }
     }
 }

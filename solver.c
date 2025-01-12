@@ -104,9 +104,8 @@ new_piece( char id, const Fig *fig_def, Piece *next_ )
     for ( int i = 0; i < numOf(fig.pt); ++i ) {
       Point xy = fig_def->pt[i];
       for ( int r = 0; r < r_f % 4; ++r ) {              // rotate
-        int  t = xy.x;
-        xy.x = -xy.y;
-        xy.y = t;
+        Point tmp = { -xy.y, xy.x };
+        xy = tmp;
       }
       if ( r_f >= 4 )   xy.x = -xy.x;                    // flip
       fig.pt[i] = xy;
@@ -242,7 +241,7 @@ render( const Board *this )
           ( ( at( this, x-1, y+0 ) != at( this, x+0, y+0 ) )? 8 : 0 );
         strcat( result, ELEMS[ d ][ code ] );
       }
-      strcat( result, "\n" );
+      if ( y < this->height || d < 1 )  { strcat( result, "\n" ); }
     }
   }
 
@@ -309,7 +308,7 @@ solve( Solver *this, const Point *xy_ )
     char curs_up[16] = {0};
 
     if ( this->solutions > 1 ) {
-      sprintf( curs_up, "\033[%dA", this->board->height * 2 + 3 );
+      sprintf( curs_up, "\033[%dA", this->board->height * 2 + 2 );
     }
     printf( "%s%s%d\n", curs_up, render( this->board ), this->solutions );
     fflush(stdout);
