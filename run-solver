@@ -40,8 +40,8 @@ Lang :'C#',    ext: 'cs'  do |l|
 end
 
 Lang :D  do |l|
-  cc = select_cmd( "ldc2", "dmd" )
-  "#{cc} --of #{l.src}.out -O2 #{l.src} && ./#{l.src}.out #{l.o}"
+  [ "ldc2 --of=#{l.src}.out -O2 #{l.src} && ./#{l.src}.out #{l.o}",
+    "dmd   -of=#{l.src}.out -O  #{l.src} && ./#{l.src}.out #{l.o}" ]
 end
 
 Lang :Java,    base: 'Solver'  do |l|
