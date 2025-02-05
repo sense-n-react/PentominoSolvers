@@ -1,80 +1,83 @@
 #!/usr/bin/env ruby
 # -*- coding:utf-8 -*-
 
-require 'optparse'
+Lang :Ruby,       ext: 'rb'
+Lang :Python,     ext: 'py'  do ['python3 -u', 'python -u'] end
+Lang :Lua
+Lang :Squirrel,   ext: 'nut' do 'sq' end
+Lang :Julia,      ext: 'jl'
+Lang :Javascript, ext: 'js'  do 'node' end
 
-solver :Ruby, :rb
-solver :Python, :py do ['python3 -u', 'python -u'] end
-solver :Lua
-solver :Squirrel,   :nut, 'sq'
-solver :Julia,      :jl
-solver :Javascript, :js,  'node'
-
-solver :Typescript, :ts do |l|
+Lang :Typescript, ext: 'ts', base: 'solver-ts' do |l|
   "tsc --target es2019 --module commonjs --strict #{l.src} &&
      node #{l.src.sub(/\.ts$/, ".js")} #{l.o} "
 end
 
-solver :Perl, :pl
-solver :Php
-solver :Groovy
+Lang :Perl,       ext: 'pl'
+Lang :Php
+Lang :Groovy
 
-solver :Awk do |l|
+Lang :Awk  do |l|
   awk = select_cmd( "gawk", "awk" )
   "#{awk} -f #{l.src} -- #{l.o}"
 end
 
-solver :C do |l|
+Lang :C  do |l|
   cc = select_cmd( "clang", "gcc" )
   "#{cc} -o #{l.src}.out -O2 -Wall #{l.src} && ./#{l.src}.out #{l.o}"
 end
 
-solver :'C++', :cpp do |l|
+Lang :'C++',   ext: 'cpp'  do |l|
   cc = select_cmd( "clang++", "g++" )
   "#{cc} -o #{l.src}.out -O2 -Wall -std=c++17 #{l.src} && ./#{l.src}.out #{l.o}"
 end
 
-solver :'C#', :cs do |l|
+Lang :'C#',    ext: 'cs'  do |l|
   mono = exists?( "mono" ) ? "mono" : ''
   csc  = select_cmd( "mcs", "csc" )
   "#{csc} -nologo -optimize+ -out:#{l.src}.out #{l.src} &&
      #{mono} ./#{l.src}.out #{l.o}"
 end
 
-solver :Java do |l|
+Lang :D  do |l|
+  cc = select_cmd( "ldc2", "dmd" )
+  "#{cc} --of #{l.src}.out -O2 #{l.src} && ./#{l.src}.out #{l.o}"
+end
+
+Lang :Java,    base: 'Solver'  do |l|
   "javac -d build #{l.src} &&
      java -cp build #{l.src.sub(/\.\w+$/, '')} #{l.o}"
 end
 
-solver :Kotlin, :kt do |l|
+Lang :Kotlin,  ext: 'kt'  do |l|
   "kotlinc #{l.src} -include-runtime -d solver.jar &&
      kotlin solver.jar #{l.o}"
 end
 
-solver :Go,  'go run'
+Lang :Go          do 'go run' end
 
-solver :Rust, :rs do |l|
+Lang :Rust,    ext: 'rs'    do |l|
   [ "rust-script #{l.src} #{l.o}",
     "rustc -O -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}" ]
 end
 
-solver :Swift do |l|
+Lang :Swift  do |l|
   [ "swiftc -Ounchecked -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}",
     "swift #{l.src} #{l.o}" ]
 end
 
-solver :Lisp do |l|
+Lang :Lisp  do |l|
   [ "sbcl --script #{l.src} #{l.o}",
     "clisp -q -c #{l.src} -o #{l.src}.fas &&  clisp #{l.src}.fas #{l.o}" ]
 end
 
-solver :Crystal, :cr do |l|
+Lang :Crystal, ext: 'cr'  do |l|
   "crystal build --release -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}"
 end
 
-solver :Elixir, :exs
+Lang :Elixir,  ext: 'exs'
 
-solver :'F#', :fsx do |l|
+Lang :'F#',    ext: 'fsx'  do |l|
   [ "fsi --optimize+ #{l.src} #{l.o}",
     "fsc --optimize+ -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}",
     "dotnet fsi --optimize+ #{l.src} #{l.o}" ]
@@ -83,23 +86,19 @@ end
 ###########################################################
 
 BEGIN {
-  LANG_DEF = {}
-  Lang     = Struct.new( 'Lang', :name, :ext, :prog, :src, :o )
+  LANG_DEF = []
+  Lang     = Struct.new( 'Lang', :name, :prog, :src, :o )
 
-  def solver lang, *arg, &block
-    arg.unshift(nil)  unless arg[0].is_a?(Symbol)   # ext
-    ext  = arg[0] || lang.to_s.downcase
-    prog = block_given? ? block : Proc.new{ (arg[1] || lang.to_s.downcase) }
-    src  = case lang
-           when :Java;       "Solver.#{ext}"
-           when :Typescript; "solver-ts.#{ext}"
-           else              "solver.#{ext}"
-           end
-    LANG_DEF[ lang ] = Lang.new( lang, ext.to_s, prog, src )
+  def Lang name, **o, &block
+    ext  = o[:ext]  || name.to_s.downcase
+    base = o[:base] || 'solver'
+    prog = block    || Proc.new{ name.to_s.downcase }
+    LANG_DEF << Lang.new( name, prog, "#{base}.#{ext}" )
   end
 }
 
 ###########################################################
+require 'optparse'
 
 def options
   $O = {compile: true}
@@ -110,9 +109,9 @@ Usage:  #{File.basename(__FILE__)} OPTION... ext...
     Execute PENTOMINO Solvers written in various programming languages.
 
     Lang/ext:
-#{    LANG_DEF.values.sort_by{ |lang| lang.name }.
+#{    LANG_DEF.sort_by{ |lang| lang.name }.
         each_with_object( [[]] ) do |lang,lines|
-          lines[-1] << "#{lang.name}/#{lang.ext}"
+          lines[-1] << "#{lang.name}/#{lang.src[/[^.]+$/]}"
           lines << [lines[-1].pop]  if lines[-1].join( ', ' ).size > 60
         end.map { |words| '      ' + words.join( '  ' ) }.join( "\n" )
 }
@@ -176,12 +175,13 @@ def main()
   options()
 
   args = $O[:all] ?
-            LANG_DEF.values.map { |lang| lang.ext } :
+            LANG_DEF.map { |lang| lang.name } :
             ARGV.map{ |s| s }
 
   args.each do |arg|
-    lang = LANG_DEF.values.find{ |lang|
-      lang.name.to_s.upcase == arg.upcase || lang.ext == arg
+    lang = LANG_DEF.find{ |lang|
+      lang.name.to_s.downcase == arg.downcase ||
+        lang.src.sub( /\..+$/, '' ).downcase == arg.downcase
     }
     if lang.nil?
       puts "#{arg}? skip it"
@@ -201,7 +201,6 @@ def main()
     end
     puts "#{lang.name}: failed\n"  unless result
   end # args
-
 end
 
 begin
