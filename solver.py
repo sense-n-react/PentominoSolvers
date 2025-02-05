@@ -38,7 +38,7 @@ PIECE_DEF = list_( ('''
 
 ''').split( "\n" ) ).map_idx(
   lambda line, y : list_( line ).map_idx(
-    lambda s, x : [ s, math.floor( x / 2 ), y ]
+    lambda s, x : [ s, x//2, y ]
   )
 ).flatten().reduce(
   lambda h, sxy :
@@ -90,7 +90,7 @@ class Board :
     for y in range( self.height ) :
       self.cells.append( [ Board.SPACE ] * self.width )
     if w * h == 64 :                 # 8x8 or 4x16
-      self.place( int(w/2)-1, int(h/2)-1, [ [0,0], [0,1], [1,0], [1,1] ], '@' )
+      self.place( w//2 - 1, h//2 - 1, [ [0,0], [0,1], [1,0], [1,1] ], '@' )
     return
 
 
