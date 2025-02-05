@@ -5,8 +5,7 @@
 #
 $stdout.sync = true
 
-PIECE_DEF = Hash.new( [] )
-%Q(
+PIECE_DEF = %Q(
 +-------+-------+-------+-------+-------+-------+
 |       |   I   |  L    |  N    |       |       |
 |   F F |   I   |  L    |  N    |  P P  | T T T |
@@ -19,9 +18,9 @@ PIECE_DEF = Hash.new( [] )
 | U U U | V V V |   W W |   X   |    Y  |   Z Z |
 |       |       |       |       |    Y  |       |
 +-------+-------+-------+-------+-------+-------+
-).split("\n").each_with_index do |l, y|
-  l.split('').each_with_index { |c, x|  PIECE_DEF[ c ] += [[ x/2, y ]] }
-end
+).lines.flat_map.with_index do |l, y|
+  l.chars.map.with_index { |c, x|  [c, [x/2, y] ] }
+end.each_with_object( Hash.new([]) ) { |(c, xy), h|  h[c] += [xy] }
 # --> Hash: { "F"=>[ [2,  3], [ 3, 3], [ 1, 4], [ 2, 4], [ 2, 5] ],
 #             "P"=>[ [17, 3], [18, 3], [17, 4], [18, 4], [17, 5] ],
 
