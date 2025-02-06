@@ -181,7 +181,7 @@ def main()
   args.each do |arg|
     lang = LANG_DEF.find{ |lang|
       lang.name.to_s.downcase == arg.downcase ||
-        lang.src.sub( /\..+$/, '' ).downcase == arg.downcase
+        lang.src.sub( /^.+?\./, '' ).downcase == arg.downcase
     }
     if lang.nil?
       puts "#{arg}? skip it"
