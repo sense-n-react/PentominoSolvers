@@ -11,6 +11,7 @@ import std.algorithm;
 import std.array;
 import std.container;
 import std.regex;
+import std.range;
 
 
 immutable string PIECE_DEF_DOC = q{
@@ -31,13 +32,13 @@ immutable string PIECE_DEF_DOC = q{
 struct Point { int x, y;    }
 struct Fig   { Point[] pts; }
 
-Fig[char] piece_defs;
+Fig[char] PIECE_DEF;
 shared static this()
 {
   foreach( y, line; PIECE_DEF_DOC.split( "\n" ) ) {
     foreach( x, c; line ) {
-      if ( c !in piece_defs ) { piece_defs[c] = Fig();  }
-      piece_defs[c].pts ~= Point( cast(int)(x / 2), cast(int)y);
+      if ( c !in PIECE_DEF ) { PIECE_DEF[c] = Fig();  }
+      PIECE_DEF[c].pts ~= Point( cast(int)(x / 2), cast(int)y);
     }
   }
 }
@@ -69,13 +70,13 @@ class Piece
         pt.x -= fig.pts[0].x;
         pt.y -= fig.pts[0].y;
       }
-      if ( this.figs.canFind( fig ) == false ) {
+      if ( ! this.figs.canFind( fig ) ) {
         this.figs ~= fig;
       }
     }
     if ( debug_flag ) {
-      writeln( format( "%c: (%d)", id, figs.length )  );
-      foreach( fig; figs ) {
+      writeln( format( "%c: (%d)", id, this.figs.length )  );
+      foreach( fig; this.figs ) {
         writeln( "   ", fig.pts.map!( pt => [ pt.x, pt.y ] ) );
       }
     }
@@ -87,19 +88,19 @@ class Piece
 class Board
 {
   static immutable char SPACE = ' ';
-  static string[][] ELEMS;
+  static string[][]     ELEMS;
 
-  int width, height;
+  int        width, height;
   char[][]   cells;
 
   this( int w, int h )
   {
-    width  = w;
-    height = h;
-    cells  = new char[][h];
+    this.width  = w;
+    this.height = h;
+    this.cells  = new char[][h];
     foreach( i; 0 .. h ) {
-      cells[i]   = new char[w];
-      cells[i][] = SPACE;            // all elements
+      this.cells[i]   = new char[w];
+      this.cells[i][] = SPACE;            // all elements
     }
 
     if ( w * h == 64 ) {     // 8x8 or 4x16
@@ -111,7 +112,8 @@ class Board
 
   char at( int x, int y )
   {
-    return ( x >= 0 && x < width && y >= 0 && y < height )? cells[y][x] : '?';
+    return ( x >= 0 && x < this.width &&
+             y >= 0 && y < this.height )? this.cells[y][x] : '?';
   }
 
 
@@ -124,7 +126,7 @@ class Board
   void place( Point o, Fig fig, char id )
   {
     foreach ( pt; fig.pts ) {
-      cells[o.y + pt.y][o.x + pt.x] = id;
+      this.cells[ o.y + pt.y ][ o.x + pt.x ] = id;
     }
   }
 
@@ -132,37 +134,31 @@ class Board
   Point find_space( ref Point xy )
   {
     auto x = xy.x,  y = xy.y;
-    while ( cells[ y ][ x ] != SPACE ) {
+    while ( this.cells[ y ][ x ] != SPACE ) {
       if ( ++x == this.width ) { x = 0;  ++y; }
     }
     return Point( x, y );
   }
+
 
   static this()
   {
     ELEMS = [
        "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---",
        "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
-       ].map!( s => s.split( "," ) ).array;
+       ].map!( s => s.split(',') ).array.transposed.map!( r => r.array ).array;
   }
 
   string render()
   {
-    string[] result;
-    foreach( y; 0 .. height + 1 ) {
-      foreach( d; 0 .. 2 ) {
-        result ~= "";                                         // append string
-        foreach( x; 0 .. width + 1 ) {
-          int code =
-            ( (at(x + 0, y + 0) != at(x + 0, y - 1)) ? 1 : 0 ) |
-            ( (at(x + 0, y - 1) != at(x - 1, y - 1)) ? 2 : 0 ) |
-            ( (at(x - 1, y - 1) != at(x - 1, y + 0)) ? 4 : 0 ) |
-            ( (at(x - 1, y + 0) != at(x + 0, y + 0)) ? 8 : 0 );
-          result[ $ - 1 ] ~= Board.ELEMS[d][code]; // concat string
-        }
-      }
-    }
-    return result.join( "\n" );
+    return iota( this.height + 1 ).map!( y =>
+      iota( this.width + 1 ).map!( x =>
+        Board.ELEMS[ ( (this.at(x+0, y+0) != this.at(x+0, y-1)) ? 1 : 0 ) |
+                     ( (this.at(x+0, y-1) != this.at(x-1, y-1)) ? 2 : 0 ) |
+                     ( (this.at(x-1, y-1) != this.at(x-1, y+0)) ? 4 : 0 ) |
+                     ( (this.at(x-1, y+0) != this.at(x+0, y+0)) ? 8 : 0 ) ]
+      ).array.transposed.map!( elems => elems.join )
+    ).joiner.join( "\n" );
   }
 
 }  // class Board
@@ -181,12 +177,13 @@ class Solver
 
     Piece pc = null;
     foreach_reverse( c; "FILNPTUVWXYZ" ) {
-      pc = new Piece( c, piece_defs[c], pc );
+      pc = new Piece( c, PIECE_DEF[c], pc );
     }
     Unused  = new Piece( '!', Fig(), pc );       // dumy piece
     // limit the symmetry of 'F'
     pc.figs = pc.figs[ 0 .. (width == height)? 1 : 2 ];
   }
+
 
   void solve( ref Point xy_ )
   {
@@ -208,13 +205,12 @@ class Solver
     }
     else {
       ++solutions;
-      auto curs_up = "";
-      if ( solutions > 1 ) {
-        curs_up = format( "\033[%dA", board.height * 2 + 2 );
-      }
+      auto curs_up =
+        (solutions > 1)? format( "\033[%dA", board.height * 2 + 2 ) :  "";
       writeln( curs_up, board.render(), solutions );
     }
   }
+
 }  // class Solver
 
 
@@ -226,7 +222,7 @@ void main( string[] args )
     if ( m ) {
       int w = m.captures[1].to!int;
       int h = m.captures[2].to!int;
-      if ( w >= 3 && h >= 3 && (w * h == 60 || w * h == 64) ) {
+      if ( w >= 3 && h >= 3 && ( w * h == 60 || w * h == 64 ) ) {
         width  = w;
         height = h;
       }
