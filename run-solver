@@ -175,7 +175,7 @@ def main()
   options()
 
   args = $O[:all] ?
-            LANG_DEF.map { |lang| lang.name } :
+            LANG_DEF.map { |lang| lang.name.to_s } :
             ARGV.map{ |s| s }
 
   args.each do |arg|
