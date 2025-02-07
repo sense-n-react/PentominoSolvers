@@ -53,14 +53,14 @@ class Piece
   Fig[]  figs;
   Piece  next;
 
-  this( char id, Fig fig_def, Piece next )
+  this( char id_, Fig def_, Piece next_ )
   {
-    this.id   = id;
-    this.next = next;
-    if ( fig_def.pts.length == 0 ) return;
+    id   = id_;
+    next = next_;
+    if ( def_.pts.length == 0 ) return;
 
     foreach( r_f; 0 .. 8 ) {                 // rotate and flip
-      auto fig = Fig( fig_def.pts.dup );     // copy
+      auto fig = Fig( def_.pts.dup );        // copy
       foreach( ref xy; fig.pts ) {           // reference
         foreach( _; 0 .. r_f % 4 ) { xy   = Point( -xy.y, xy.x ); } // rotate
         if     ( r_f >= 4 )        { xy.x = -xy.x;  }               // flip
@@ -70,13 +70,13 @@ class Piece
         pt.x -= fig.pts[0].x;
         pt.y -= fig.pts[0].y;
       }
-      if ( ! this.figs.canFind( fig ) ) {
-        this.figs ~= fig;
+      if ( ! figs.canFind( fig ) ) {
+        figs ~= fig;
       }
     }
     if ( debug_flag ) {
-      writeln( format( "%c: (%d)", id, this.figs.length )  );
-      foreach( fig; this.figs ) {
+      writeln( format( "%c: (%d)", id, figs.length )  );
+      foreach( fig; figs ) {
         writeln( "   ", fig.pts.map!( pt => [ pt.x, pt.y ] ) );
       }
     }
@@ -95,12 +95,12 @@ class Board
 
   this( int w, int h )
   {
-    this.width  = w;
-    this.height = h;
-    this.cells  = new char[][h];
+    width  = w;
+    height = h;
+    cells  = new char[][h];
     foreach( i; 0 .. h ) {
-      this.cells[i]   = new char[w];
-      this.cells[i][] = SPACE;            // all elements
+      cells[i]   = new char[w];
+      cells[i][] = SPACE;            // all elements
     }
 
     if ( w * h == 64 ) {     // 8x8 or 4x16
@@ -112,8 +112,7 @@ class Board
 
   char at( int x, int y )
   {
-    return ( x >= 0 && x < this.width &&
-             y >= 0 && y < this.height )? this.cells[y][x] : '?';
+    return ( x >= 0 && x < width && y >= 0 && y < height )? cells[y][x] : '?';
   }
 
 
@@ -126,7 +125,7 @@ class Board
   void place( Point o, Fig fig, char id )
   {
     foreach ( pt; fig.pts ) {
-      this.cells[ o.y + pt.y ][ o.x + pt.x ] = id;
+      cells[ o.y + pt.y ][ o.x + pt.x ] = id;
     }
   }
 
@@ -134,8 +133,8 @@ class Board
   Point find_space( ref Point xy )
   {
     auto x = xy.x,  y = xy.y;
-    while ( this.cells[ y ][ x ] != SPACE ) {
-      if ( ++x == this.width ) { x = 0;  ++y; }
+    while ( cells[ y ][ x ] != SPACE ) {
+      if ( ++x == width ) { x = 0;  ++y; }
     }
     return Point( x, y );
   }
@@ -151,12 +150,12 @@ class Board
 
   string render()
   {
-    return iota( this.height + 1 ).map!( y =>
-      iota( this.width + 1 ).map!( x =>
-        Board.ELEMS[ ( (this.at(x+0, y+0) != this.at(x+0, y-1)) ? 1 : 0 ) |
-                     ( (this.at(x+0, y-1) != this.at(x-1, y-1)) ? 2 : 0 ) |
-                     ( (this.at(x-1, y-1) != this.at(x-1, y+0)) ? 4 : 0 ) |
-                     ( (this.at(x-1, y+0) != this.at(x+0, y+0)) ? 8 : 0 ) ]
+    return iota( height + 1 ).map!( y =>
+      iota( width + 1 ).map!( x =>
+        Board.ELEMS[ ( (at(x+0, y+0) != at(x+0, y-1)) ? 1 : 0 ) |
+                     ( (at(x+0, y-1) != at(x-1, y-1)) ? 2 : 0 ) |
+                     ( (at(x-1, y-1) != at(x-1, y+0)) ? 4 : 0 ) |
+                     ( (at(x-1, y+0) != at(x+0, y+0)) ? 8 : 0 ) ]
       ).array.transposed.map!( elems => elems.join )
     ).joiner.join( "\n" );
   }
@@ -172,8 +171,8 @@ class Solver
 
   this( int width, int height )
   {
-    this.solutions = 0;
-    this.board     = new Board( width, height );
+    solutions = 0;
+    board     = new Board( width, height );
 
     Piece pc = null;
     foreach_reverse( c; "FILNPTUVWXYZ" ) {
