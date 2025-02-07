@@ -44,3 +44,4 @@ RUN git clone https://github.com/albertodemichelis/squirrel.git \
     && (cd squirrel && make && cp bin/sq /usr/local/bin/ ) \
     && rm -rf squirrel
 
+RUN apt-get install -y ldc
