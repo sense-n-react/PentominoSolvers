@@ -16,6 +16,7 @@ end
 Lang :Perl,       ext: 'pl'
 Lang :Php
 Lang :Groovy
+Lang :Dart
 
 Lang :Awk  do |l|
   awk = select_cmd( "gawk", "awk" )
