@@ -1,19 +1,19 @@
 #!/usr/bin/env ruby
 # -*- coding:utf-8 -*-
 
-Lang :Ruby,       ext: 'rb'
-Lang :Python,     ext: 'py'  do ['python3 -u', 'python -u'] end
+Lang :Ruby,       'rb'
+Lang :Python,     'py'  do ['python3 -u', 'python -u'] end
 Lang :Lua
-Lang :Squirrel,   ext: 'nut' do 'sq' end
-Lang :Julia,      ext: 'jl'
-Lang :Javascript, ext: 'js'  do 'node' end
+Lang :Squirrel,   'nut' do 'sq' end
+Lang :Julia,      'jl'
+Lang :Javascript, 'js'  do 'node' end
 
-Lang :Typescript, ext: 'ts', base: 'solver-ts' do |l|
+Lang :Typescript, 'ts', base: 'solver-ts' do |l|
   "tsc --target es2019 --module commonjs --strict #{l.src} &&
      node #{l.src.sub(/\.ts$/, ".js")} #{l.o} "
 end
 
-Lang :Perl,       ext: 'pl'
+Lang :Perl, 'pl'
 Lang :Php
 Lang :Groovy
 Lang :Dart
@@ -28,12 +28,12 @@ Lang :C  do |l|
   "#{cc} -o #{l.src}.out -O2 -Wall #{l.src} && ./#{l.src}.out #{l.o}"
 end
 
-Lang :'C++',   ext: 'cpp'  do |l|
+Lang :'C++', 'cpp'  do |l|
   cc = select_cmd( "clang++", "g++" )
   "#{cc} -o #{l.src}.out -O2 -Wall -std=c++17 #{l.src} && ./#{l.src}.out #{l.o}"
 end
 
-Lang :'C#',    ext: 'cs'  do |l|
+Lang :'C#', 'cs'  do |l|
   mono = exists?( "mono" ) ? "mono" : ''
   csc  = select_cmd( "mcs", "csc" )
   "#{csc} -nologo -optimize+ -out:#{l.src}.out #{l.src} &&
@@ -45,19 +45,19 @@ Lang :D  do |l|
     "dmd   -of=#{l.src}.out -O  #{l.src} && ./#{l.src}.out #{l.o}" ]
 end
 
-Lang :Java,    base: 'Solver'  do |l|
+Lang :Java,  base: 'Solver'  do |l|
   "javac -d build #{l.src} &&
      java -cp build #{l.src.sub(/\.\w+$/, '')} #{l.o}"
 end
 
-Lang :Kotlin,  ext: 'kt'  do |l|
+Lang :Kotlin,  'kt'  do |l|
   "kotlinc #{l.src} -include-runtime -d solver.jar &&
      kotlin solver.jar #{l.o}"
 end
 
-Lang :Go          do 'go run' end
+Lang :Go   do 'go run' end
 
-Lang :Rust,    ext: 'rs'    do |l|
+Lang :Rust, 'rs'  do |l|
   [ "rust-script #{l.src} #{l.o}",
     "rustc -O -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}" ]
 end
@@ -72,16 +72,24 @@ Lang :Lisp  do |l|
     "clisp -q -c #{l.src} -o #{l.src}.fas &&  clisp #{l.src}.fas #{l.o}" ]
 end
 
-Lang :Crystal, ext: 'cr'  do |l|
+Lang :Crystal, 'cr'  do |l|
   "crystal build --release -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}"
 end
 
-Lang :Elixir,  ext: 'exs'
+Lang :Elixir, 'exs'
 
-Lang :'F#',    ext: 'fsx'  do |l|
+Lang :'F#', 'fsx'  do |l|
   [ "fsi --optimize+ #{l.src} #{l.o}",
     "fsc --optimize+ -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}",
     "dotnet fsi --optimize+ #{l.src} #{l.o}" ]
+end
+
+Lang :Zig do |l|
+  "zig build-exe -O ReleaseFast -femit-bin=#{l.src}.out #{l.src} && ./#{l.src}.out #{l.o}"
+end
+
+Lang :Nim do |l|
+  "nim c -o:#{l.src}.out --opt:speed #{l.src} && ./#{l.src}.out #{l.o}"
 end
 
 ###########################################################
@@ -90,8 +98,8 @@ BEGIN {
   LANG_DEF = []
   Lang     = Struct.new( 'Lang', :name, :prog, :src, :o )
 
-  def Lang name, **o, &block
-    ext  = o[:ext]  || name.to_s.downcase
+  def Lang name, ext = nil, **o, &block
+    ext ||= name.to_s.downcase
     base = o[:base] || 'solver'
     prog = block    || Proc.new{ name.to_s.downcase }
     LANG_DEF << Lang.new( name, prog, "#{base}.#{ext}" )

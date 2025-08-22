@@ -1,5 +1,5 @@
 # Pentomino Solvers in various Languages
-## how to run programs
+## How to run programs
 
 ### execute solver.xx
 ~~~
@@ -31,7 +31,8 @@ $ ./run-solver --all
 | JavaScript | TypeScript | Groovy | Perl     | AWK   |
 | PHP        | C          | C++    | C#       | Java  |
 | Kotlin     | Go         | Rust   | Swift    | LISP  |
-| Crystal    | Elixir     | F#     | D        |       |
+| Crystal    | Elixir     | F#     | D        | Dart  |
+| Zig        | Nim        |        |          |       |
 
 
 ## Processing Time
