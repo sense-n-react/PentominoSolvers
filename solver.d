@@ -75,7 +75,7 @@ class Piece
       }
     }
     if ( debug_flag ) {
-      writeln( format( "%c: (%d)", id, figs.length )  );
+      writefln( "%c: (%d)", id, figs.length );
       foreach( fig; figs ) {
         writeln( "   ", fig.pts.map!( pt => [ pt.x, pt.y ] ) );
       }

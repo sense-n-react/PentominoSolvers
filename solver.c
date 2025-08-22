@@ -28,7 +28,7 @@ const char* PIECE_DEF[] = {
 };
 
 typedef struct { int   x, y;  } Point;
-typedef struct { Point pt[5]; } Fig;
+typedef struct { Point pts[5]; } Fig;
 
 const Fig *
 piece_def( int id )
@@ -37,9 +37,9 @@ piece_def( int id )
   int  n = 0;
   for ( int y = 0; y < numOf(PIECE_DEF); ++y ) {
     for ( int x = 0; PIECE_DEF[y][x] != 0; ++x ) {
-      if ( PIECE_DEF[y][x] == id && n < numOf(fig.pt) ) {
-        fig.pt[n].x = x/2;
-        fig.pt[n].y = y;
+      if ( PIECE_DEF[y][x] == id && n < numOf(fig.pts) ) {
+        fig.pts[n].x = x/2;
+        fig.pts[n].y = y;
         n++;
       }
     }
@@ -57,9 +57,9 @@ fig_to_s( const Fig *fig )
 {
   static char buf[80];
   sprintf( buf, "[ (%2d,%2d),(%2d,%2d),(%2d,%2d),(%2d,%2d),(%2d,%2d) ]",
-           fig->pt[0].x, fig->pt[0].y,  fig->pt[1].x, fig->pt[1].y,
-           fig->pt[2].x, fig->pt[2].y,  fig->pt[3].x, fig->pt[3].y,
-           fig->pt[4].x, fig->pt[4].y
+           fig->pts[0].x, fig->pts[0].y,  fig->pts[1].x, fig->pts[1].y,
+           fig->pts[2].x, fig->pts[2].y,  fig->pts[3].x, fig->pts[3].y,
+           fig->pts[4].x, fig->pts[4].y
            );
 
  return buf;
@@ -101,21 +101,21 @@ new_piece( char id, const Fig *fig_def, Piece *next_ )
   for ( int r_f = 0; r_f < 8; ++r_f ) {                  // rotate & flip
     Fig fig;
 
-    for ( int i = 0; i < numOf(fig.pt); ++i ) {
-      Point xy = fig_def->pt[i];
+    for ( int i = 0; i < numOf(fig.pts); ++i ) {
+      Point xy = fig_def->pts[i];
       for ( int r = 0; r < r_f % 4; ++r ) {              // rotate
         Point tmp = { -xy.y, xy.x };
         xy = tmp;
       }
       if ( r_f >= 4 )   xy.x = -xy.x;                    // flip
-      fig.pt[i] = xy;
+      fig.pts[i] = xy;
     }
                                                          // sort
-    qsort( fig.pt, numOf(fig.pt), sizeof(fig.pt[0]), cmp_point );
+    qsort( fig.pts, numOf(fig.pts), sizeof(fig.pts[0]), cmp_point );
 
-    for ( int i = numOf(fig.pt) - 1; i >= 0; --i ) {     // normalize
-      fig.pt[i].x -= fig.pt[0].x;
-      fig.pt[i].y -= fig.pt[0].y;
+    for ( int i = numOf(fig.pts) - 1; i >= 0; --i ) {     // normalize
+      fig.pts[i].x -= fig.pts[0].x;
+      fig.pts[i].y -= fig.pts[0].y;
     }
 
     {                                                    // uniq
@@ -162,8 +162,8 @@ at( const Board *this, int x, int y )
 int
 check( const Board *this, const Point* o, const Fig* fig )
 {
-  for ( size_t i = 0; i < numOf(fig->pt); ++i ) {
-    if ( at( this, o->x + fig->pt[i].x, o->y + fig->pt[i].y ) != SPACE )
+  for ( size_t i = 0; i < numOf(fig->pts); ++i ) {
+    if ( at( this, o->x + fig->pts[i].x, o->y + fig->pts[i].y ) != SPACE )
       return 0;
   }
   return !0;
@@ -173,8 +173,8 @@ check( const Board *this, const Point* o, const Fig* fig )
 void
 place( Board *this, const Point* o, const Fig* fig, char id )
 {
-  for ( size_t i = 0; i < numOf(fig->pt); ++i ) {
-    this->cells[ o->y + fig->pt[i].y ][ o->x + fig->pt[i].x ] = id;
+  for ( size_t i = 0; i < numOf(fig->pts); ++i ) {
+    this->cells[ o->y + fig->pts[i].y ][ o->x + fig->pts[i].x ] = id;
   }
 }
 

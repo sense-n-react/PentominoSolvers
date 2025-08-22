@@ -172,11 +172,12 @@ class Solver {
       x = space[0];
       y = space[1];
 
-      Piece? prev = unused;
-      Piece? pc;
-      while ( (pc = prev!.next) != null ) {
-        prev.next = pc!.next;
-        for ( var fig in pc!.figs ) {
+      Piece prev = unused!;
+      while ( true ) {
+        Piece? pc = prev.next;
+        if ( pc == null ) break;
+        prev.next = pc.next;
+        for ( var fig in pc.figs ) {
           if ( board.check( x, y, fig ) ) {
             board.place( x, y, fig, pc.id );
             solve( x, y );
