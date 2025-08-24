@@ -6,7 +6,7 @@ require 'optparse'
 # default options
 OPT = { size: [6,10,1], every: 1, windup: true }
 
-exit(1) unless ARGV.options {|opt|
+exit(1) unless ARGV.options do |opt|
   opt.banner =<<EOT
   Size  Solutions   Size   Solutions   Size  Solutions   Size  Solutions
   ----- ---------   ------ ---------   ----- ---------   ------ ---------
@@ -20,7 +20,7 @@ EOT
   opt.on( '-s', '--size WxHxD',
           "#{OPT[:size].join('x')}(default)",
           '8x8h, 7x9h : with a hole in the middle'
-        ) {|v|
+        ) do |v|
     sz = v.match(/(\d+)\D(\d+)h?/i).to_a[1..-1].map{ |s| s.to_i }
 
     if sz.size == 2
@@ -34,7 +34,7 @@ EOT
     sz = [ sz[0], sz[2], 1 ] if sz[1] == 1
     OPT[:hole] = v !~ /h$/i
     [sz]  # for optparse 0.5.0
-  }
+  end
 
   opt.on( '-e', '--every N',
           'display a solution every N times.',
@@ -46,7 +46,7 @@ EOT
   opt.on( '--step', 'show step-by-step' )
   opt.on( '-d',  '--debug' )
   opt.parse!( into: OPT )
-}
+end
 
 OPT[:size].flatten!   # for optparse 0.5.0
 
@@ -116,8 +116,8 @@ class Fig
   # axes: [:x], [:y], [:z], [:x,:y], [:x,:z], [:y,:z], [:x,:y,:z]
   def mirror_by_axis( axes )
     _W, _H, _D = @@grid.width - 1, @@grid.height - 1, @@grid.depth - 1
-    pts_ = axes.inject( @pts ){ |pts, ax|
-      pts.map{ |x,y,z|
+    pts_ = axes.inject( @pts ) do |pts, ax|
+      pts.map do |x,y,z|
         case ax
         when :x;  [ _W - x,      y,      z ]
         when :y;  [      x, _H - y,      z ]
@@ -126,8 +126,8 @@ class Fig
         else
           raise "unknow axis #{ax}"
         end
-      }
-    }
+      end
+    end
 
     bits = @@grid.pts2bit( pts_ )
     @@bits2fig[ bits ]
@@ -154,49 +154,49 @@ class Piece
     @@Pieces[id] = self
 
     # 0/90/180/270回転 × 反転 の組み合わせでピースの座標を計算する
-    @org_pts = Array.new(24){ |r_f|      # rotate(4), flip(2), plane(3)
-      fig = fig_points.map{ |x,y|
+    @org_pts = Array.new(24) do |r_f|      # rotate(4), flip(2), plane(3)
+      fig = fig_points.map do |x,y|
         z = 0
         (r_f % 4).times{ x, y = -y, x }          # rotate
         x, y = (r_f % 8 < 4)? [x, y] : [-x, y]   # flip
         (r_f / 8).times{ x, y, z = y, z, x }     # x plane, y plane, z plane
         [ x, y, z ]
-      }.sort_by{ |x,y,z|                         # sort
+        end.sort_by do |x,y,z|                   # sort
         [ z, y, x ]
-      }
-      fig.map{ |x,y,z|                           # normalize
+      end
+      fig.map do |x,y,z|                         # normalize
         ox, oy, oz = fig[0]
         [ x - ox, y - oy, z - oz ]
-      }
-    }.uniq                                       # uniq
+      end
+    end.uniq                                     # uniq
 
     # grid上 位置毎に配置可能な全ての fig を計算
-    @figs_at = Array.new( @@grid.size ) { |bp|
+    @figs_at = Array.new( @@grid.size ) do |bp|
       ox, oy, oz = @@grid.bp2pt[bp]
-      @org_pts.map{ |pts|
+      @org_pts.map do |pts|
         pts.map{ |x,y,z| [ x + ox, y + oy, z + oz ] }
-      }.select{ |pts|
+      end.select do |pts|
         # Grid に収まり、穴に干渉しない場合のみ
         pts.all?{ |pt| @@grid.is_inside?( *pt ) } &&
           ( @@grid.pts2bit( pts ) & @@grid.bits ) == 0
-      }.map{ |pts|
+     end.map do |pts|
         Fig.new( self, pts )
-      }.select{ |fig|
+      end.select do |fig|
         # セル数が５の倍数でない閉塞空間を作る fig を排除。
         # fig を置いてみて連続した空白のセル数を数える
         # 左上が空いていなければ右下から数える
         n  = @@grid.space_num( (bp != 0)? 0 : ( @@grid.size - 1 ),
                                [ 0, fig.bits | @@grid.bits ] )
         ( ( n % 5 ) == 0 || ( n % 5 ) == ( @@grid.sp_size - 60 ) ).
-          tap{|f|
+          tap do |f|
           if OPT[:debug] && ! f
             puts @id
             puts @@grid.render( [fig] )
             gets
           end
-        }
-      }
-    }
+        end
+      end
+    end
   end   # initializ()
 
 
@@ -204,14 +204,14 @@ class Piece
   def make_anchors
     symms_list = ( Fig::all_figs.map{ |v| v.symms } + [ @@grid.symms ] ).uniq
 
-    @anchor_figs = symms_list.each_with_object( {} ) { |symms, h |
-      h[ symms ] = @figs_at.flatten.map{ |fig|
+    @anchor_figs = symms_list.each_with_object( {} ) do |symms, h |
+      h[ symms ] = @figs_at.flatten.map do |fig|
         # 自分自身（fig）とmirrorの中で 最小の fig.bits を採用する
         ( [fig] + symms.map{ |symm| fig.mirror_by_axis( symm ) }).
           uniq.
           sort_by{ |fig| fig.bits }[0]
-      }.uniq
-    }
+      end.uniq
+    end
   end
 
   def inspect;  to_s;  end
@@ -255,11 +255,11 @@ class Grid
     @sp_size = @size
     @bits    = 0
 
-    @bp2pt = Array.new( @size ) {|bp|
+    @bp2pt = Array.new( @size ) do |bp|
       z, xy = bp.divmod( @height * @width )
       y, x = xy.divmod( @width )
       [ x, y, z]
-    }
+    end
 
     if @size > 60 && !opt[:hole]
       cx, cy = @width / 2, @height / 2
@@ -274,9 +274,9 @@ class Grid
     axes = [ :x, :y ]
     axes << :z  if @depth != 1
     axes << :r  if @width == @height && @depth == 1
-    @symms = ( 1 .. axes.size ).inject( [] ){ |a, n|
+    @symms = ( 1 .. axes.size ).inject( [] ) do |a, n|
       a += axes.combination(n).to_a.sort
-    }
+    end
   end
 
 
@@ -296,42 +296,45 @@ class Grid
 
   # figs  :  [fig1, fig2, ....]
   def render( figs, opt_print = false )
-    # array
-    grid = Array.new( @size ){ :SPACE }
+    grid    = Array.new( @size, :SPACE )     # ID
+    disp_id = Array.new( @size, '.' )        # ID表示用
     id = ->( *pt ) { is_inside?( *pt )? grid[ offset( *pt ) ] : nil }
-    # Piece ID の表示
-    disp_id = Array.new( @size ){ opt_print ? ' ' : '.' }
 
-    figs.each{ | fig |
-      pc_id = fig.pc.id
-      fig.pts.each {|pt|
-        grid[ offset( *pt ) ]    = pc_id
-        disp_id[ offset( *pt ) ] = ' '
-      }
-
-      if opt_print
-        last_z, ch = -1, fig.pc.id
-        fig.pts.each {|x,y,z|
-          next if  last_z == z
-          disp_id[ offset( x,y,z ) ]  = ch;  ch = ch.downcase
-          u, v = 1, 0
-          4.times{ last_z = z  if fig.pc.id == id.(x+u, y+v, z); u,v = v,-u }
-        }
+    figs.each do | fig |
+      fig.pts.each { |pt| grid[ offset( *pt ) ] = fig.pc.id }
+    end
+    figs.each do | fig |
+      last_z, ch = -1,  (opt_print ? fig.pc.id : ' ')
+      fig.pts.each do |x,y,z|
+        # 同一面で、隣り合う同じIDはひとつだけ表示
+        if last_z == z
+          disp_id[ offset( x,y,z ) ] = ' '
+        else
+          disp_id[ offset( x,y,z ) ] = ch
+          ch = ch.downcase
+          last_z = z  if [ [1,0], [0,1], [-1,0], [0,-1] ].any? do |u,v|
+            fig.pc.id == id.(x + u, y + v, z)
+          end
+        end
       end
-    }
+    end
 
-    Array.new( @height + 1 ) {|y|
-      Array.new( @depth ) { |z|
-        Array.new( @width + 1 ) { |x|
-          code = ( ( id.( x,   y  , z ) != id.( x,   y-1, z ) )? 1: 0 ) |
-                 ( ( id.( x,   y-1, z ) != id.( x-1, y-1, z ) )? 2: 0 ) |
-                 ( ( id.( x-1, y-1, z ) != id.( x-1, y  , z ) )? 4: 0 ) |
-                 ( ( id.( x-1, y  , z ) != id.( x,   y  , z ) )? 8: 0 )
-          ch = id.(x,y,z) ? disp_id[ offset(x,y,z) ] : ' '
-          [ BORDER[0][code], BORDER[1][code].clone.tap{|s| s[2] = ch } ]
-        }.transpose.map(&:join)
-      }.transpose.map(&:join)
-    }.flatten
+    Array.new( @height + 1 ) do |y|
+      Array.new( @depth ) do |z|
+        Array.new( @width + 1 ) do |x|
+          ids = [ [0,0], [0,1], [1,1], [1,0] ].map { |u,v| id.( x-u, y-v, z ) }
+          [ ( ids[0] != ids[1] ? 1: 0 ) +
+            ( ids[1] != ids[2] ? 2: 0 ) +
+            ( ids[2] != ids[3] ? 4: 0 ) +
+            ( ids[3] != ids[0] ? 8: 0 ),
+            id.(x,y,z) ? disp_id[ offset(x,y,z) ] : ' '
+          ]
+        end
+      end.flatten(1).then do |codes|
+        [ codes.map{ |c,id| BORDER[0][c] }.join,
+          codes.map{ |c,id| BORDER[1][c].sub( /   $/, " #{id} " ) }.join ]
+      end
+    end.flatten
   end
 
   #
@@ -400,9 +403,9 @@ class Solver
       id_list = %w( I X L N Y F P T U V W Z )
     end
 
-    id_list.each_with_index{ |id, i|
+    id_list.each_with_index do |id, i|
       Piece[id].next   = Piece[ id_list[i+1] ]  # Piece[ nil ] => nil
-    }
+    end
     @Unused      = Piece[ '@' ]
     @Unused.next = Piece[ id_list[0] ]
   end   # initialize
@@ -436,7 +439,7 @@ class Solver
     # 配置を制限して対称の解を排除する
     nil_fig  = Piece[ '@' ].figs_at[0][0]
 
-    solve( nil_fig, @grid.symms ) { |cond, figs|
+    solve( nil_fig, @grid.symms ) do |cond, figs|
       if cond == :done
         @solutions += 1
         last_solution = figs
@@ -444,7 +447,7 @@ class Solver
       if @o[:every] != 0 && ( @solutions % @o[:every] == 0 || @solutions == 1 )
         show_solution( figs )
       end
-    }
+    end
 
     show_solution( last_solution )  if @o[:every] != 0
 
@@ -469,25 +472,25 @@ class Solver
       # 対称性が残っている場合、対称性を制限する anchor_figs を設定する
       anchor    = prev.next
       prev.next = anchor.next
-      anchor.anchor_figs[ _symms ].each{ |fig|
+      anchor.anchor_figs[ _symms ].each do |fig|
         if @grid.check( fig )
-          solve( fig, _symms & fig.symms ) { |cond, figs|
+          solve( fig, _symms & fig.symms ) do |cond, figs|
             yield [ cond, figs.unshift( _fig ) ]
-          }
+          end
         end
-      }
+      end
       prev.next = anchor
 
     else
       while ( pc = prev.next ) != nil
         prev.next = pc.next
-        pc.figs_at[bp].each{ |fig|
+        pc.figs_at[bp].each do |fig|
           if @grid.check( fig )
-            solve( fig ) { |cond, figs|
+            solve( fig ) do |cond, figs|
               yield [ cond, figs.unshift( _fig ) ]
-            }
+            end
           end
-        }
+        end
         prev = ( prev.next = pc )
       end
 
