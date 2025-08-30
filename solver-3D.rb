@@ -87,6 +87,7 @@ class Fig
   def self.grid=( grid ); @@grid = grid;       end
 
   @@bits2fig = {}
+  def self.[]( bits );    @@bits2fig[ bits ];  end
   def self.all_figs;      @@bits2fig.values;   end
 
   attr_reader :pc, :pts, :bits
@@ -100,7 +101,9 @@ class Fig
     @@bits2fig[ @bits ] = self
 
     # ミラーが自分と一致する 軸 を全て求めておく
-    @symms = @@grid.symms.select{ |symm| mirror_by_axis( symm ) == self }
+    @symms = @@grid.symms.select do |symm|
+      mirror_by_symm( symm ) == self
+    end
   end
 
   def inspect;  to_s;  end
@@ -113,24 +116,18 @@ class Fig
            )
   end
 
-  # axes: [:x], [:y], [:z], [:x,:y], [:x,:z], [:y,:z], [:x,:y,:z]
-  def mirror_by_axis( axes )
-    _W, _H, _D = @@grid.width - 1, @@grid.height - 1, @@grid.depth - 1
-    pts_ = axes.inject( @pts ) do |pts, ax|
-      pts.map do |x,y,z|
-        case ax
-        when :x;  [ _W - x,      y,      z ]
-        when :y;  [      x, _H - y,      z ]
-        when :z;  [      x,      y, _D - z ]
-        when :r;  [      y,      x,      z ]
-        else
-          raise "unknow axis #{ax}"
-        end
-      end
+  # symm: [:x], [:y], [:z], [:x,:y], [:x,:z], [:y,:z], [:x,:y,:z]
+  def mirror_by_symm( symm )
+    # :r を一番最後にして反転
+    pts = @pts.map do |x,y,z|
+      x = @@grid.width  - 1 - x  if symm.include?( :x )
+      y = @@grid.height - 1 - y  if symm.include?( :y )
+      z = @@grid.depth  - 1 - z  if symm.include?( :z )
+      x, y = y, x                if symm.include?( :r )
+      [ x, y, z]
     end
 
-    bits = @@grid.pts2bit( pts_ )
-    @@bits2fig[ bits ]
+    Fig[ @@grid.pts2bit( pts ) ]
   end
 
 end  # class Fig
@@ -207,7 +204,7 @@ class Piece
     @anchor_figs = symms_list.each_with_object( {} ) do |symms, h |
       h[ symms ] = @figs_at.flatten.map do |fig|
         # 自分自身（fig）とmirrorの中で 最小の fig.bits を採用する
-        ( [fig] + symms.map{ |symm| fig.mirror_by_axis( symm ) }).
+        ( [fig] + symms.map{ |symm| fig.mirror_by_symm( symm ) }).
           uniq.
           sort_by{ |fig| fig.bits }[0]
       end.uniq
