@@ -257,7 +257,7 @@ public:
     solutions( 0 ), board( *new Board(width, height) )
   {
     Piece *pc = nullptr;
-    std::string ids( "FLINPTUVWXYZ" );   // the first 'X' is dummy
+    std::string ids( "FLINPTUVWXYZ" );
     for ( auto it = ids.rbegin(); it != ids.rend(); ++it ) {
       pc = new Piece( *it, PIECE_DEF[ *it ], pc );
     }
