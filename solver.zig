@@ -20,12 +20,16 @@ const PIECE_DEF =
     \\!
 ;
 
+const builtin = @import("builtin");
 const std = @import("std");
-const print = std.debug.print;
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 
-const builtin = @import("builtin");
+//const print = std.debug.print;
+fn print(comptime fmt: []const u8, args: anytype) void {
+    var ws = std.fs.File.stdout().writerStreaming(&.{});
+    ws.interface.print(fmt, args) catch {};
+}
 
 /////////////////////////////////////////////////////////////
 
@@ -89,8 +93,7 @@ const Fig = struct {
             var buf: [128]u8 = undefined;
         };
 
-        var stream = std.io.fixedBufferStream(&static.buf);
-        const writer = stream.writer();
+        var writer = std.io.Writer.fixed(&static.buf);
         writer.print("[ ", .{}) catch {};
         for (self.pts, 0..) |xy, i| {
             writer.print("({:3},{:3})", .{ xy.x, xy.y }) catch {};
@@ -99,7 +102,7 @@ const Fig = struct {
             }
         }
         writer.print(" ]", .{}) catch {};
-        return static.buf[0..stream.pos];
+        return writer.buffered();
     }
 };
 
@@ -383,6 +386,5 @@ pub fn main() !void {
     }
 
     var solver = try Solver.new(width, height);
-
     solver.solve(Point{ .x = 0, .y = 0 });
 }
