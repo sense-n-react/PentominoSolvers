@@ -32,7 +32,7 @@ $ ./run-solver --all
 | PHP        | C          | C++    | C#       | Java  |
 | Kotlin     | Go         | Rust   | Swift    | LISP  |
 | Crystal    | Elixir     | F#     | D        | Dart  |
-| Zig        | Nim        | Pacal  |          |       |
+| Zig        | Nim        | Pascal |          |       |
 
 
 ## Processing Time
