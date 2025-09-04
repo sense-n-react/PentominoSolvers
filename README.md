@@ -1,24 +1,24 @@
-# Pentomino Solvers in various Languages
-## How to run programs
+# Pentomino Solvers in Various Languages
+## How to Run programs
 
-### execute solver.xx
+### Execute solver.xx
 ~~~
 $ ruby solver.rb           # Ruby
 
 $ python3 solver.py        # Python
 
-$ gcc -o solver.c.out solver.c    # compile c program
-$ ./solver.c.out                  # exec the executable file
+$ gcc -o solver.c.out solver.c    # Compile C program
+$ ./solver.c.out                  # Run the comiled executable
 ~~~
 
-### using run-solver script
+### Using run-solver script
 ~~~
-$ ./run-solver rb py        # specify extension(s)
+$ ./run-solver rb py        # Specify one or more extensions
 # or
-$ ./run-solver ruby python  # specify language(s)
+$ ./run-solver ruby python  # Specify one or more languages
 ~~~
 
-### run all programs
+### Run all programs
 ~~~
 $ ./run-solver --all
 ~~~
@@ -32,10 +32,14 @@ $ ./run-solver --all
 | PHP        | C          | C++    | C#       | Java  |
 | Kotlin     | Go         | Rust   | Swift    | LISP  |
 | Crystal    | Elixir     | F#     | D        | Dart  |
-| Zig        | Nim        |        |          |       |
+| Zig        | Nim        | Pacal  |          |       |
 
 
 ## Processing Time
 
 ![Processing Time](https://github.com/sense-n-react/PentominoSolvers/blob/images/images/time-6x10.png)
+
+## Solver Algorithm
+
+See [ALGORITHM.md](ALGORITHM.md) for details.
 
