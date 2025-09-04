@@ -92,6 +92,10 @@ Lang :Nim do |l|
   "nim c -o:#{l.src}.out --opt:speed #{l.src} && ./#{l.src}.out #{l.o}"
 end
 
+Lang :Pascal,  'pas' do |l|
+  "fpc -O2 -vn- -o#{l.src}.out #{l.src} && ./#{l.src}.out #{l.o}"
+end
+
 ###########################################################
 
 BEGIN {
