@@ -4,7 +4,7 @@
 # Pentomino Puzzle Solver with Nim
 #
 import os, sequtils, re, strutils, algorithm, strformat
-import std/sugar
+import tables, sugar
 
 const PIECE_DEF_DOC = """
 +-------+-------+-------+-------+-------+-------+
@@ -21,6 +21,17 @@ const PIECE_DEF_DOC = """
 +-------+-------+-------+-------+-------+-------+
 """
 
+type
+  Point = tuple[ x: int, y: int ]
+  Fig   = seq[ Point ]
+
+var PIECE_DEF = initTable[ char, Fig ]()
+
+for y, line in PIECE_DEF_DOC.splitLines().pairs():
+  for x, c in line.pairs():
+    if $c =~ re"\w":
+      PIECE_DEF.mgetOrPut( c, @[] ).add( ( x div 2, y ) )
+
 var debug_flg = false
 
 #############################################################
@@ -28,15 +39,14 @@ var debug_flg = false
 # Piece
 #
 type
-  Point = tuple[x: int, y: int]
   Piece = ref object
     id:   char
-    figs: seq[seq[Point]]
+    figs: seq[ Fig ]
     next: Piece
 
 
-proc newPiece( id: char, pc_def: seq[Point], next: Piece ): Piece =
-  var figs: seq[seq[Point]] = @[]
+proc newPiece( id: char, pc_def: Fig, next: Piece ): Piece =
+  var figs: seq[ Fig ] = @[]
   for rf in 0 ..< 8:
     var fig = pc_def;
     for _ in 0 ..< rf mod 4: fig = fig.mapIt( ( -it.y, it.x ) ) # rotate
@@ -65,7 +75,7 @@ type
     cells:  seq[seq[char]]
 
 let SPACE = ' '
-method place( o: Board, x: int, y: int, fig: seq[Point], id: char) {.base.}
+method place( o: Board, x: int, y: int, fig: Fig, id: char ) {.base.}
 
 proc newBoard( w, h: int ): Board =
   let cells = newSeqWith( h, newSeqWith( w, SPACE ) )
@@ -75,25 +85,25 @@ proc newBoard( w, h: int ): Board =
                   @[ (0,0), (0,1), (1,0), (1,1) ], '@' )
 
 
-method at( o:Board, x: int, y: int): char {.base.} =
+method at( o:Board, x: int, y: int ): char {.base.} =
   if x >= 0 and x < o.width and y >= 0 and y < o.height:
     o.cells[y][x]
   else:
     '?'
 
 
-method check( o: Board, x: int, y: int, fig: seq[Point]): bool {.base.} =
-  fig.allIt( o.at( x + it.x, y + it.y) == SPACE )
+method check( o: Board, x: int, y: int, fig: Fig ): bool {.base.} =
+  fig.allIt( o.at( x + it.x, y + it.y ) == SPACE )
 
 
-method place( o: Board, x: int, y: int, fig: seq[Point], id: char) {.base.} =
+method place( o: Board, x: int, y: int, fig: Fig, id: char ) {.base.} =
   for pt in fig:
-    o.cells[y + pt.y][x + pt.x] = id
+    o.cells[ y + pt.y ][ x + pt.x ] = id
 
 
-method find_space( o: Board, xx: int, yy: int): Point {.base.} =
+method find_space( o: Board, xx: int, yy: int ): Point {.base.} =
   var ( x, y ) = ( xx, yy )
-  while o.cells[y][x] != SPACE:
+  while o.cells[ y ][ x ] != SPACE:
     inc( x )
     if x == o.width:
       x = 0
@@ -136,12 +146,7 @@ proc newSolver( width:int, height:int ): Solver =
 
   var pc: Piece = nil
   for id in "FLINPTUVWXYZ".toSeq.reversed():
-    var pts: seq[Point] = @[]
-    for y, line in PIECE_DEF_DOC.splitLines.pairs():
-      for x, c in line:
-        if c == id:
-          pts.add( ( x div 2, y ) )
-    pc = newPiece( id, pts, pc )
+    pc = newPiece( id, PIECE_DEF[ id ], pc )
 
   var unused = newPiece( '!', @[], pc )    # dummy piece
   # limit the symmetry of 'F'
@@ -179,9 +184,9 @@ var (width, height) = (6, 10)
 for arg in commandLineParams():
   if arg == "--debug":  debug_flg = true
 
-  if arg =~ re"(\d+).(\d+)":
+  if arg =~ re"(\d+)\D(\d+)":
      let ( w, h ) = ( parseInt( matches[0] ), parseInt( matches[1] ) )
-     if w >= 3 and h >= 3 and  ( w * h == 60 or w * h == 64 ):
+     if w >= 3 and h >= 3 and ( w * h == 60 or w * h == 64 ):
        ( width, height ) = ( w, h )
 
 let solver = newSolver( width, height )
