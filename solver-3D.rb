@@ -100,7 +100,7 @@ class Fig
     @bits = @@grid.pts2bit( _pts )
     @@bits2fig[ @bits ] = self
 
-    # ミラーが自分と一致する 軸 を全て求めておく
+    # Determine all axes where the mirror matches itself
     @symms = @@grid.symms.select do |symm|
       mirror_by_symm( symm ) == self
     end
@@ -118,7 +118,7 @@ class Fig
 
   # symm: [:x], [:y], [:z], [:x,:y], [:x,:z], [:y,:z], [:x,:y,:z]
   def mirror_by_symm( symm )
-    # :r を一番最後にして反転
+    # Place :r at the very end for reflection
     pts = @pts.map do |x,y,z|
       x = @@grid.width  - 1 - x  if symm.include?( :x )
       y = @@grid.height - 1 - y  if symm.include?( :y )
@@ -150,7 +150,7 @@ class Piece
     @next    = nil
     @@Pieces[id] = self
 
-    # 0/90/180/270回転 × 反転 の組み合わせでピースの座標を計算する
+    # Calc piece coordinates for all combinations of 0/90/180/270 degree rotation x flip
     @org_pts = Array.new(24) do |r_f|      # rotate(4), flip(2), plane(3)
       fig = fig_points.map do |x,y|
         z = 0
@@ -167,21 +167,22 @@ class Piece
       end
     end.uniq                                     # uniq
 
-    # grid上 位置毎に配置可能な全ての fig を計算
+    # Cal all figs that can be placed at each position on the grid
     @figs_at = Array.new( @@grid.size ) do |bp|
       ox, oy, oz = @@grid.bp2pt[bp]
       @org_pts.map do |pts|
         pts.map{ |x,y,z| [ x + ox, y + oy, z + oz ] }
       end.select do |pts|
-        # Grid に収まり、穴に干渉しない場合のみ
+        # all points are inside the Grid and does not interfere with holes
         pts.all?{ |pt| @@grid.is_inside?( *pt ) } &&
           ( @@grid.pts2bit( pts ) & @@grid.bits ) == 0
-     end.map do |pts|
+      end.map do |pts|
         Fig.new( self, pts )
       end.select do |fig|
-        # セル数が５の倍数でない閉塞空間を作る fig を排除。
-        # fig を置いてみて連続した空白のセル数を数える
-        # 左上が空いていなければ右下から数える
+        # Eliminate figs that create enclosed spaces whose number of cells
+        # is not a multiple of 5,
+        # Count the number of consecutive empty cells after placing the fig.
+        # If the top-left is not empty, start counting from the bottom-right
         n  = @@grid.space_num( (bp != 0)? 0 : ( @@grid.size - 1 ),
                                [ 0, fig.bits | @@grid.bits ] )
         ( ( n % 5 ) == 0 || ( n % 5 ) == ( @@grid.sp_size - 60 ) ).
@@ -197,16 +198,16 @@ class Piece
   end   # initializ()
 
 
-  # 対称性を排除する anchor_figs
+  # anchor_figs that remove symmetry
   def make_anchors
     symms_list = ( Fig::all_figs.map{ |v| v.symms } + [ @@grid.symms ] ).uniq
 
     @anchor_figs = symms_list.each_with_object( {} ) do |symms, h |
       h[ symms ] = @figs_at.flatten.map do |fig|
-        # 自分自身（fig）とmirrorの中で 最小の fig.bits を採用する
+        # use the fig with the smallest bits among itself (fig) and its mirrors
         ( [fig] + symms.map{ |symm| fig.mirror_by_symm( symm ) }).
           uniq.
-          sort_by{ |fig| fig.bits }[0]
+          min{ |a,b| a.bits <=> b.bits }
       end.uniq
     end
   end
@@ -227,7 +228,7 @@ end  # class Piece
 # Grid
 #
 class Grid
-  BITs64 = Array.new(64) {|b| 1 << b }  # LSB が (x,y,z) = (0,0,0)
+  BITs64 = Array.new(64) {|b| 1 << b }  # LSB : (x,y,z) = (0,0,0)
   BITPOS = (0..64).each_with_object( {} ) { |i, h|  h[ 1 << i ] = i }
 
   attr_reader :width, :height, :depth, :size, :sp_size
@@ -266,7 +267,7 @@ class Grid
       @bits    = pts2bit( hole.map{ |x,y| [x,y,0] } )
     end
 
-    # ミラー軸の組み合わせ
+    # Combinations of mirror axes
     # [:x], [:y], [:z], [:x,:y], [:x,:z], [:y,:z], [:x,:y,:z]
     axes = [ :x, :y ]
     axes << :z  if @depth != 1
@@ -294,7 +295,7 @@ class Grid
   # figs  :  [fig1, fig2, ....]
   def render( figs, opt_print = false )
     grid    = Array.new( @size, :SPACE )     # ID
-    disp_id = Array.new( @size, '.' )        # ID表示用
+    disp_id = Array.new( @size, '.' )        # ID to show
     id = ->( *pt ) { is_inside?( *pt )? grid[ offset( *pt ) ] : nil }
 
     figs.each do | fig |
@@ -303,7 +304,7 @@ class Grid
     figs.each do | fig |
       last_z, ch = -1,  (opt_print ? fig.pc.id : ' ')
       fig.pts.each do |x,y,z|
-        # 同一面で、隣り合う同じIDはひとつだけ表示
+        # display only one ID
         if last_z == z
           disp_id[ offset( x,y,z ) ] = ' '
         else
@@ -335,7 +336,7 @@ class Grid
   end
 
   #
-  # 連続した空白を数える
+  # Count consecutive empty spaces
   #
   def space_num( bp, num_and_bits )
     b = BITs64[ bp ]
@@ -432,17 +433,18 @@ class Solver
     @try_count     = 0
     last_solution = []
 
-    # 最初のPiece として 座標を持たない Fig を使う
-    # 配置を制限して対称の解を排除する
-    nil_fig  = Piece[ '@' ].figs_at[0][0]
+    place_anchor( @grid.symms ) do |cond, anchor_figs|
+      next  if cond != :done
 
-    solve( nil_fig, @grid.symms ) do |cond, figs|
-      if cond == :done
-        @solutions += 1
-        last_solution = figs
-      end
-      if @o[:every] != 0 && ( @solutions % @o[:every] == 0 || @solutions == 1 )
-        show_solution( figs )
+      solve() do |cond, figs|
+        if cond == :done
+          @solutions += 1
+          last_solution = anchor_figs + figs
+        end
+        if @o[:every] != 0 && ( @solutions % @o[:every] == 0 || @solutions == 1 )
+          show_solution( anchor_figs + figs )
+        end
+
       end
     end
 
@@ -455,46 +457,57 @@ class Solver
   end
 
 
-  def solve( _fig, _symms = [] )
+  # Set anchor_figs to restrict symmetry
+  def place_anchor( _symms )
     @try_count += 1
 
-    @grid.place( _fig )
-    yield [ :place, [_fig] ] if @o[:step]
-
-    prev = @Unused
-    if ( bp = @grid.find_space() ) == @grid.size
-      yield [ :done, [_fig] ]    # done !
-
-    elsif ! _symms.empty?
-      # 対称性が残っている場合、対称性を制限する anchor_figs を設定する
-      anchor    = prev.next
-      prev.next = anchor.next
+    if _symms.empty?
+      yield [ :done, [] ]
+    else
+      anchor = @Unused.next
+      @Unused.next = anchor.next
       anchor.anchor_figs[ _symms ].each do |fig|
         if @grid.check( fig )
-          solve( fig, _symms & fig.symms ) do |cond, figs|
-            yield [ cond, figs.unshift( _fig ) ]
+          @grid.place( fig )
+          place_anchor( _symms & fig.symms ) do |cond, figs|
+            yield [ cond, figs.unshift( fig ) ]
           end
+          @grid.unplace( fig )
         end
       end
-      prev.next = anchor
+      @Unused.next = anchor
+    end
+
+  end  # place_anchor()
+
+
+  def solve()
+    @try_count += 1
+
+    if ( bp = @grid.find_space() ) == @grid.size
+      yield [ :done, [] ]    # done !
 
     else
+      prev = @Unused
       while ( pc = prev.next ) != nil
         prev.next = pc.next
         pc.figs_at[bp].each do |fig|
           if @grid.check( fig )
-            solve( fig ) do |cond, figs|
-              yield [ cond, figs.unshift( _fig ) ]
+            @grid.place( fig )
+            yield [ :place, [fig] ] if @o[:step]
+
+            solve() do |cond, figs|
+              yield [ cond, figs.unshift( fig ) ]
             end
+
+            @grid.unplace( fig )
+            yield [ :unplace, [] ] if @o[:step] && @o[:interactive]
           end
         end
         prev = ( prev.next = pc )
       end
 
     end
-
-    @grid.unplace( _fig )
-    yield [ :unplace, [] ] if @o[:step] && @o[:interactive]
 
   end  # solve()
 
