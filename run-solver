@@ -138,10 +138,11 @@ EOT
     opt.on( '-s', '--size=WxH' ) { |v| v =~ /^\d+x\d+$/ ? v : nil }
     opt.on( '-d', '--debug', "execute with '--debug'" )
     opt.on( '-n', '--suppress' )
+    opt.on( '-l', '--list' )
     opt.on( '--[no-]compile' )
 
     r = opt.parse!( into: $O )
-    if ARGV.empty? && !$O[:all]
+    if ARGV.empty? && !$O[:all] && !$O[:list]
       puts opt.help
       exit
     end
@@ -187,6 +188,10 @@ end
 def main()
   options()
 
+  if $O[:list]
+    puts LANG_DEF.map { |lang| lang.src }
+    exit
+  end
   args = $O[:all] ?
             LANG_DEF.map { |lang| lang.name.to_s } :
             ARGV.map{ |s| s }
