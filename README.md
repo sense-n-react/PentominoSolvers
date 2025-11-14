@@ -51,7 +51,7 @@ $ ./run-solver --all
 | PHP        | C          | C++    | C#       | Java  |
 | Kotlin     | Go         | Rust   | Swift    | LISP  |
 | Crystal    | Elixir     | F#     | D        | Dart  |
-| Zig        | Nim        | Pascal |          |       |
+| Zig        | Nim        | Pascal | Bash     |       |
 
 > More languages may be added over time.
 
