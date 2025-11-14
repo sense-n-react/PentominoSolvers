@@ -96,6 +96,8 @@ Lang :Pascal,  'pas' do |l|
   "fpc -O2 -vn- -o#{l.src}.out #{l.src} && ./#{l.src}.out #{l.o}"
 end
 
+Lang :Bash, 'sh'
+
 ###########################################################
 
 BEGIN {
