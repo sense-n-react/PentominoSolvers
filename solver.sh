@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
+# -*- coding:utf-8 -*-
+
 # Pentomino Puzzle Solver with Bash
 # Verified on bash 5.2+
 
-PIECE_DOC=$(cat <<EOF
+declare -A PIECE_DEF
+
+while IFS= read -d '' -r -n1 id; do
+  [[ $id =~ [A-Z] ]] && PIECE_DEF["$id"]+="$((x/2)),$y "
+  ((x++))
+  [[ "$id" == $'\n' ]] && { x=0; ((y++)); }
+done < <(cat <<EOF
 +-------+-------+-------+-------+-------+-------+
 |       |   I   |  L    |  N    |       |       |
 |   F F |   I   |  L    |  N    |  P P  | T T T |
@@ -17,6 +25,7 @@ PIECE_DOC=$(cat <<EOF
 +-------+-------+-------+-------+-------+-------+
 EOF
 )
+
 
 WIDTH=6
 HEIGHT=10
@@ -46,7 +55,7 @@ generate_figs() {
   read -r -a base_pts <<< "$base_str"
 
   for r_f in {0..7}; do
-    local -a pts=("${base_pts[@]}")   # 2,2 2,3 3,1 3,2 4,2
+    local -a pts=("${base_pts[@]}")     # 2,2 2,3 3,1 3,2 4,2
 
     for ((i=0; i<r_f % 4; i++)); do     # rotation
       for n in "${!pts[@]}"; do
@@ -65,12 +74,11 @@ generate_figs() {
     fi
 
     # sort                 -> 3,1 2,2 3,2 4,2 2,3
-    IFS=$'\n' read -r -d '' -a pts < <(
-      for q in "${pts[@]}"; do echo "$q"; done | sort -t, -k2,2n -k1,1n
-    )
+    read -a pts <<< \
+         "$(echo "${pts[@]}" | xargs -n1 | sort -t, -k2,2n -k1,1n | xargs)"
 
     # normalize            -> 0,0 -1,1 0,1 1,1 -1,2
-    repr=""
+    local repr=""
     local x0="${pts[0]%,*}" y0="${pts[0]#*,}"
     for i in "${!pts[@]}"; do
       x=("${pts[$i]%,*}")
@@ -86,25 +94,11 @@ generate_figs() {
 
 # === Precompute pieces ===
 init_PIECES() {
-  local -A BASE_PIECES
-  # Base piece
-  while read -r line; do
-    # 各文字を走査
-    for ((i=0; i<${#line}; i++)); do
-      c="${line:$i:1}"
-      # アルファベットならその座標を登録
-      if [[ $c =~ [A-Z] ]]; then
-        BASE_PIECES["$c"]+="$((i/2)),$y "
-      fi
-    done
-    ((y++))
-  done <<< "$PIECE_DOC"
-
   # generate figs of each orientation
   # PIECES[id]
   #
-  for id in "${!BASE_PIECES[@]}"; do
-    PIECES["$id"]=$(generate_figs "${BASE_PIECES[$id]}")
+  for id in "${!PIECE_DEF[@]}"; do
+    PIECES["$id"]=$(generate_figs "${PIECE_DEF[$id]}")
   done
 
   # slice figs to reduce symmetries
@@ -114,26 +108,28 @@ init_PIECES() {
   # genrate absolute figs for each (x,y) cord.
   # PIECES[id,x,y]
   #
-  for id in "${!BASE_PIECES[@]}"; do
+  for id in "${!PIECE_DEF[@]}"; do
+    local -a figs
+    local x y fig_str
     IFS='|' read -r -a figs <<< "${PIECES["$id"]}"
     if (( ${debug_flg}==1 )); then
       echo "$id: (${#figs[@]})  $(IFS='|'; echo "${figs[*]}")"
     fi
-    for ((ay=0; ay<HEIGHT; ay++)); do
-      for ((ax=0; ax<WIDTH; ax++)); do
-        abs_figs=()
-        for fig in "${figs[@]}"; do
-          abs_fig=""
-          placeable=0
-          for p in $fig; do
-            dx=${p%,*} dy=${p#*,}
-            x=$((ax+dx)) y=$((ay+dy))
-            ((x<0||x>=WIDTH||y<0||y>=HEIGHT)) && { placeable=1; break; }
-            abs_fig+="$x,$y "
+    for ((y=0; y<HEIGHT; y++)); do
+      for ((x=0; x<WIDTH; x++)); do
+        local -a abs_figs=()
+        for fig_str in "${figs[@]}"; do     # $fig_str: "0,0 -1,1 0,1 1,1 -1,2"
+          local ax ay dx dy n=0 abs_fig_str=""
+          for p in $fig_str; do             # $p: "0,0", "-1,1", ,,,
+            dx=${p%,*}   dy=${p#*,}
+            ax=$((x+dx)) ay=$((y+dy))
+            (( ax < 0 || ax >= WIDTH || ay < 0 || ay >= HEIGHT )) && break
+            abs_fig_str+="$ax,$ay "
+            ((n+=1))
           done
-          ((placeable==0)) && { abs_figs+=("$abs_fig"); abs_fig=""; }
+          ((n==5)) && abs_figs+=("$abs_fig_str")
         done # fig
-        PIECES["$id,$ax,$ay"]=$(IFS='|'; echo "${abs_figs[*]}")
+        PIECES["$id,$x,$y"]=$(IFS='|'; echo "${abs_figs[*]}")
       done  # x
     done  # y
   done # id
@@ -164,27 +160,27 @@ find_space() {
   done
 }
 
-elems_str=("    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---"
+ELEMS_STR=("    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---"
            "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   " )
-IFS=',' read -a elems0 <<< "${elems_str[0]}"
-IFS=',' read -a elems1 <<< "${elems_str[1]}"
+IFS=',' read -a ELEMS0 <<< "${ELEMS_STR[0]}"
+IFS=',' read -a ELEMS1 <<< "${ELEMS_STR[1]}"
 
 render() {
   local x y
   for ((y=0; y<=$HEIGHT; y++)); do
     local line1="" line2=""
     for ((x=0; x<=$WIDTH; x++)); do
-      local c00=${BOARD["$x,$y"]:-a}
-      local c01=${BOARD["$x,$((y-1))"]:-a}
-      local c11=${BOARD["$((x-1)),$((y-1))"]:-a}
-      local c10=${BOARD["$((x-1)),$y"]:-a}
+      local c00=${BOARD["$((x-0)),$((y-0))"]:-@}
+      local c01=${BOARD["$((x-0)),$((y-1))"]:-@}
+      local c11=${BOARD["$((x-1)),$((y-1))"]:-@}
+      local c10=${BOARD["$((x-1)),$((y-0))"]:-@}
       local code=0
       [[ "$c00" != "$c01" ]] && ((code+=1))
       [[ "$c01" != "$c11" ]] && ((code+=2))
       [[ "$c11" != "$c10" ]] && ((code+=4))
       [[ "$c10" != "$c00" ]] && ((code+=8))
-      line1+=${elems0[$code]}
-      line2+=${elems1[$code]}
+      line1+=${ELEMS0[$code]}
+      line2+=${ELEMS1[$code]}
     done
     echo "$line1"
     echo "$line2"
@@ -233,7 +229,7 @@ while [ $# -gt 0 ]; do
     *)
       size="$1"
       if [[ "$size" =~ [0-9]+x[0-9]+ ]]; then
-        w=${1%x*}  h=${1#*x}
+        w=${size%x*}  h=${size#*x}
         WIDTH=$w   HEIGHT=h
       fi
       ;;
