@@ -97,6 +97,22 @@ Lang :Pascal,  'pas' do |l|
 end
 
 Lang :Bash, 'sh'
+Lang :Zsh, 'zsh'
+
+Lang :VB, 'vb' do |l|
+  ver = %x[ dotnet --version ].match( /^(\d+\.\d+)/ ).to_a[1]  # 6.0, 9.0"
+  vbproj =<<EOT
+     <Project Sdk="Microsoft.NET.Sdk">
+       <PropertyGroup>
+         <OutputType>Exe</OutputType>
+         <TargetFramework>net#{ver}</TargetFramework>
+         <RootNamespace>Solver</RootNamespace>
+       </PropertyGroup>
+     </Project>
+EOT
+  File.open( "#{l.src}proj", "w+" ) { |f| f.puts vbproj }
+  "dotnet build -c Release #{l.src}proj && bin/Release/net#{ver}/solver #{l.o}"
+end
 
 ###########################################################
 
@@ -171,16 +187,10 @@ def run( *cmds )
       puts "    #{bin} doesn't exist."
       return true
     elsif $O[:suppress] == nil
-      # swap stdout with stderr
-      #   stderr:  output of solver
-      #   stdout:  output of time command
-      IO.popen( "bash -c 'time #{cmd}' 3>&1 1>&2 2>&3", "r+" ) do |io|
-        while !io.eof
-          puts io.gets
-        end
-      end
+      pid = spawn( "bash -c 'time #{cmd}'" )
+      Process.wait(pid)
       return false  if $? != 0
-    end # if
+    end
   end # each
   return true
 end
