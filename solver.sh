@@ -40,11 +40,11 @@ init_BOARD() {
       BOARD["$x,$y"]="."
     done
   done
-  if ((WIDTH==8 && HEIGHT==8)); then
-     BOARD["3,3"]="@"
-     BOARD["3,4"]="@"
-     BOARD["4,3"]="@"
-     BOARD["4,4"]="@"
+  if ((WIDTH * HEIGHT == 64)); then
+    BOARD["$((WIDTH/2-1)),$((HEIGHT/2-1))"]="@"
+    BOARD["$((WIDTH/2-1)),$((HEIGHT/2  ))"]="@"
+    BOARD["$((WIDTH/2  )),$((HEIGHT/2-1))"]="@"
+    BOARD["$((WIDTH/2  )),$((HEIGHT/2  ))"]="@"
   fi
 }
 
@@ -102,8 +102,11 @@ init_PIECES() {
   done
 
   # slice figs to reduce symmetries
-  PIECES[F]=$(echo "${PIECES[F]}" | cut -d '|' -f 1-2)
-  ((WIDTH == 8)) && PIECES[I]=$(echo "${PIECES[I]}" | cut -d '|' -f 1)
+  if ((WIDTH==HEIGHT)); then
+    PIECES[F]=$(echo "${PIECES[F]}" | cut -d '|' -f 1)
+  else
+    PIECES[F]=$(echo "${PIECES[F]}" | cut -d '|' -f 1-2)
+  fi
 
   # genrate absolute figs for each (x,y) cord.
   # PIECES[id,x,y]
