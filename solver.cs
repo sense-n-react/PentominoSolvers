@@ -107,7 +107,11 @@ public class Board
 
     public bool check( int x, int y, Fig fig )
     {
-        return fig.All( pt => at( x + pt[0], y + pt[1] ) == SPACE );
+        foreach( var pt in fig ) {
+            if ( at( x + pt[0], y + pt[1] ) != SPACE ) return false;
+        }
+        return true;
+        // return fig.All( pt => at( x + pt[0], y + pt[1] ) == SPACE );
     }
 
 
@@ -204,7 +208,7 @@ public class Solver
         foreach( char id in "FLINPTUVWXYZ".Reverse() ) {
             pc = new Piece( id, piece_def( id ), pc );
         }
-        Unused = new Piece( 'F', new List<int[]>(), pc );    // dummy piece
+        Unused = new Piece( '!', new List<int[]>(), pc );    // dummy piece
         // limit the symmetry of 'F'
         pc.figs = pc.figs.GetRange( 0, (width == height) ? 1 : 2 );
 
