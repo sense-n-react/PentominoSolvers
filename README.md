@@ -1,6 +1,6 @@
 # Pentomino Solvers in Various Programming Languages
 
-Solve the **Pentomino puzzle** — a classic **tiling and combinatorial problem** — implemented in **20+ programming languages**, including Ruby, Python, C, C++, Go, Rust, JavaScript, and more.
+Solve the **Pentomino puzzle** — a classic **tiling and combinatorial problem** — implemented in **30+ programming languages**, including Ruby, Python, C, C++, Go, Rust, JavaScript, and more.
 
 This repository provides a collection of **Pentomino solver algorithms** written in different programming languages to demonstrate differences in syntax, performance, and algorithmic approach.  
 It is ideal for learners who want to compare how the same logic is expressed across multiple languages, and for developers interested in puzzle-solving algorithms and optimization techniques.
@@ -52,6 +52,7 @@ $ ./run-solver --all
 | Kotlin     | Go         | Rust   | Swift    | LISP  |
 | Crystal    | Elixir     | F#     | D        | Dart  |
 | Zig        | Nim        | Pascal | Bash     | VB    |
+| Scala      |            |        |          |       |
 
 > More languages may be added over time.
 

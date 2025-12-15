@@ -114,6 +114,11 @@ EOT
   "dotnet build -c Release #{l.src}proj && bin/Release/net#{ver}/solver #{l.o}"
 end
 
+Lang :Scala  do |l|
+  scala  = select_cmd( "scala-cli", "scala" )
+  "#{scala} compile #{l.src} && #{scala} run #{l.src} -- #{l.o}"
+end
+
 ###########################################################
 
 BEGIN {
