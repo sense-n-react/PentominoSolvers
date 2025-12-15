@@ -28,12 +28,8 @@ val PIECE_DEF: Map[Char, List[List[Int]]] =
 |       |       |       |       |    Y  |       |
 +-------+-------+-------+-------+-------+-------+
 """
-    .split( "\n" )
-    .zipWithIndex
-    .flatMap { case ( line, y ) =>
-      line.toCharArray.zipWithIndex.map { case (id, x) =>
-        id -> List( x / 2, y )
-      }
+    .linesIterator.toList.zipWithIndex.flatMap { case ( line, y ) =>
+      line.toCharArray.zipWithIndex.map { case (id, x) => id -> List(x/2, y) }
     }
     .groupMapReduce(_._1)( p => List( p._2 ) )( _ ++ _ )
 
