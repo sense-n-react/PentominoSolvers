@@ -12,7 +12,8 @@ fun <T> transpose(list: List<List<T>>): List<List<T>> =
 /////////////////////////////////////////////////////////////////
 
 
-val PIECE_DEF = """
+val PIECE_DEF =
+    """
 +-------+-------+-------+-------+-------+-------+
 |       |   I   |  L    |  N    |       |       |
 |   F F |   I   |  L    |  N    |  P P  | T T T |
@@ -25,22 +26,16 @@ val PIECE_DEF = """
 | U U U | V V V |   W W |   X   |    Y  |   Z Z |
 |       |       |       |       |    Y  |       |
 +-------+-------+-------+-------+-------+-------+
-""".split( "\n" ).mapIndexed { y, ln ->
-    ln.toCharArray().mapIndexed { x, id ->
-        mapOf( id to listOf( x/2, y ) )
+"""
+    .lines().withIndex().flatMap { (y, line) ->
+        line.withIndex().map { (x, id) -> id to Pair( x/2, y ) }
     }
-}.flatten().
-fold( emptyMap<Char,List<List<Int>>>() ) { hash, id_xy ->
-    val id  = id_xy.keys.toList()[0]                    // 'F'
-    var xys = listOf( id_xy[ id ]!! )                   // [[0,1]]
-    if ( hash[ id ] != null ) xys = hash[ id ]!! + xys  // [[1,0],[0,1], ]
-    hash + mapOf( id to xys )     // hash を mapOf(..) で上書き
-}
-/*
-val PIECE_DEF = mapOf(
-  'F' to listOf(listOf(1,0),listOf(0,1),listOf(1,1),listOf(1,2),listOf(2,2)),
-  'L' to listOf(listOf(0,0),listOf(0,1),listOf(0,2),listOf(0,3),listOf(1,3)),
- */
+    .groupBy( { it.first }, { it.second } )
+
+//val PIECE_DEF = mapOf(
+//  'F' to listOf(Pair(1,0),Pair(0,1),Pair(1,1),Pair(1,2),Pair(2,2)),
+//  'L' to listOf(Pair(0,0),Pair(0,1),Pair(0,2),Pair(0,3),Pair(1,3)),
+
 
 /////////////////////////////////////////////////////////////////
 
@@ -55,13 +50,13 @@ var debug_flg: Boolean = false
 
 /////////////////////////////////////////////////////////////////
 
-class Piece( val id: Char, fig_def:List<List<Int>>, var next: Piece? ) {
+class Piece( val id: Char, fig_def:List<Pair<Int,Int>>, var next: Piece? ) {
     val  figs = mutableListOf<Fig>()
 
     init {
         for ( r_f in 0 until 8 ) {                // rotate & flip
-            val fig = fig_def.map {
-                var pt = Point( it[0], it[1] )
+            val fig = fig_def.map { (x,y) ->
+                var pt = Point( x, y )
                 repeat( r_f % 4 ) { pt = Point( -pt.y, pt.x ) }  // rotate
                 if    ( r_f >=4 ) { pt = Point( -pt.x, pt.y ) }  // flip
                 pt
