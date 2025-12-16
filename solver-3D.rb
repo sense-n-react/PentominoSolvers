@@ -72,10 +72,10 @@ PIECE_DEF = %Q(
 | s s   |   b   |
 |       |       |
 +-------+-------+
-).split("\n").each_with_index.map do |l, y|
-  l.split('').each_with_index.map { |c, x| [ c, x, y ] }
-end.flatten(1).each_with_object( Hash.new([]) ) do |cxy, h|
-  h[ cxy[0] ] += [ [ cxy[1] / 2, cxy[2] ] ]   if cxy[0] =~ /\w/
+).lines.flat_map.with_index do |line, y|
+  line.chars.map.with_index { |c, x| [ c, x/2, y ] }
+end.each_with_object( Hash.new([]) ) do |(c,*xy), h|
+  h[ c ] += [ xy ]   if c =~ /\w/
 end
 
 

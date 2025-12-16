@@ -18,9 +18,9 @@ PIECE_DEF = %Q(
 +-------+-------+-------+-------+-------+-------+
 ).lines.flat_map.with_index do |line, y|
   line.chars.map.with_index do |c, x|
-    [c, [x/2, y]]
+    [c, x/2, y]
   end
-end.each_with_object( Hash.new([]) ) do |(c,xy), h|
+end.each_with_object( Hash.new([]) ) do |(c,*xy), h|
   h[c] += [ xy ]
 end.transform_values do |points|
   Array.new( 8 ) do |r_f|
