@@ -117,15 +117,14 @@ let ELEMS = @[
 ].mapIt( it.split( ',' ) )
 
 method render( o: Board ): string {.base.} =
-  toSeq( 0 .. o.height ).map( (y: int) =>
-    toSeq( 0..1 ).map( (d: int) =>
-      toSeq( 0..o.width ).map( proc (x: int): string =
-        var ids = @[(0,0),(0,1),(1,1),(1,0)].mapIt( o.at( x-it[0], y-it[1] ) )
-        ELEMS[d][ ( if ids[0] != ids[1]: 1 else: 0 ) +
-                  ( if ids[1] != ids[2]: 2 else: 0 ) +
-                  ( if ids[2] != ids[3]: 4 else: 0 ) +
-                  ( if ids[3] != ids[0]: 8 else: 0 ) ]
-        ).join
+  toSeq( 0 .. o.height ).map( proc (y: int) : string =
+    var codes = toSeq( 0..o.width ).map( proc (x: int): int =
+      var ids = @[(0,0),(0,1),(1,1),(1,0)].mapIt( o.at( x-it[0], y-it[1] ) )
+      ( ( if ids[0] != ids[1]: 1 else: 0 ) +
+        ( if ids[1] != ids[2]: 2 else: 0 ) +
+        ( if ids[2] != ids[3]: 4 else: 0 ) +
+        ( if ids[3] != ids[0]: 8 else: 0 ) ) )
+    ELEMS.map( (elem: seq[string]) => codes.map( (c: int) => elem[c] ).join()
     ).join( "\n" )
   ).join( "\n" )
 
