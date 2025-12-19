@@ -73,7 +73,7 @@ Lang :Lisp  do |l|
 end
 
 Lang :Crystal, 'cr'  do |l|
-  "crystal build --release -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}"
+  "crystal build --release --no-debug -o #{l.src}.out #{l.src} &&  ./#{l.src}.out #{l.o}"
 end
 
 Lang :Elixir, 'exs'
