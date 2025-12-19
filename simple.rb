@@ -83,8 +83,7 @@ def render()
         ( ids[2] != ids[3] ? 4 : 0 ) +
         ( ids[3] != ids[0] ? 8 : 0 ) )
     end.then do |codes|
-      [ codes.map{ |c| ELEMS[0][c] }.join,
-        codes.map{ |c| ELEMS[1][c] }.join ]
+      ELEMS.map { |elem| codes.map{ |c| elem[c] }.join }
     end
   end.join( "\n" )
 end
