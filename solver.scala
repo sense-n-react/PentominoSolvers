@@ -8,12 +8,7 @@ import scala.collection.mutable.ArrayBuffer
 
 ////////////////////////////////////////////////////////////
 
-def transpose[T](list: List[List[T]]): List[List[T]] =
-  list.head.indices.map(i => list.map(_(i))).toList
-
-////////////////////////////////////////////////////////////
-
-val PIECE_DEF: Map[Char, List[List[Int]]] =
+val PIECE_DEF: Map[Char, List[ (Int,Int)] ] =
   """
 +-------+-------+-------+-------+-------+-------+
 |       |   I   |  L    |  N    |       |       |
@@ -29,7 +24,7 @@ val PIECE_DEF: Map[Char, List[List[Int]]] =
 +-------+-------+-------+-------+-------+-------+
 """
     .linesIterator.toList.zipWithIndex.flatMap { case ( line, y ) =>
-      line.toCharArray.zipWithIndex.map { case (id, x) => id -> List(x/2, y) }
+      line.toCharArray.zipWithIndex.map { case (id, x) => id -> (x/2, y) }
     }
     .groupMapReduce(_._1)( p => List( p._2 ) )( _ ++ _ )
 
@@ -45,12 +40,12 @@ var debugFlg = false
 
 ////////////////////////////////////////////////////////////
 
-class Piece( val id: Char, figDef: List[List[Int]], var next: Piece | Null ) {
+class Piece( val id: Char, figDef: List[(Int,Int)], var next: Piece | Null ) {
   var figs: ArrayBuffer[Fig] = ArrayBuffer()
 
   for ( r <- 0 until 8) {                // rotate & flip
-    val fig = figDef.map { p =>
-      var pt = Point( p(0), p(1) )
+    val fig = figDef.map { (x,y) =>
+      var pt = Point( x, y )
       for ( _ <- 0 until (r % 4)) pt = Point( -pt.y, pt.x )   // rotate
       if  ( r >= 4 )              pt = Point( -pt.x, pt.y )   // flip
       pt
@@ -114,26 +109,22 @@ class Board( val width: Int, val height: Int ) {
   //  ----4--+--1----
   // (-1, 0) | (0, 0)
   //         8
-  val ELEMS = transpose(
-    List(
-      //0      3     5    6    7     9    10   11   12   13   14   15
-      "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---",
-      "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
-    ).map( _.split( "," ).toList )
-  )
+  val ELEMS = List(
+    //0      3     5    6    7     9    10   11   12   13   14   15
+    "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---",
+    "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
+  ).map( _.split( "," ) )
 
   def render(): String =
     ( 0 to height ).flatMap { y =>
-      transpose(
-        ( 0 to width ).map { x =>
-          ELEMS(
-              ( if ( at( x-0, y-0 ) != at( x-0, y-1 ) ) 1 else 0 ) +
-              ( if ( at( x-0, y-1 ) != at( x-1, y-1 ) ) 2 else 0 ) +
-              ( if ( at( x-1, y-1 ) != at( x-1, y-0 ) ) 4 else 0 ) +
-              ( if ( at( x-1, y-0 ) != at( x-0, y-0 ) ) 8 else 0 )
-          )
-        }.toList
-      ).map( _.mkString("") )
+      val codes = ( 0 to width ).map { x =>
+        val ids = Seq( (0,0), (0,1), (1,1), (1,0) ).map((u, v) => at(x-u, y-v))
+        ( ( if ( ids(0) != ids(1) ) 1 else 0 ) +
+          ( if ( ids(1) != ids(2) ) 2 else 0 ) +
+          ( if ( ids(2) != ids(3) ) 4 else 0 ) +
+          ( if ( ids(3) != ids(0) ) 8 else 0 ) )
+      }
+      ELEMS.map { elem => codes.map( elem(_) ).mkString }
     }.mkString( "\n" )
 
 } // class Board

@@ -6,14 +6,6 @@
 
 import 'dart:io';
 
-extension Transpose<T> on List<List<T>> {
-  List<List<T>> transpose() {
-    if ( isEmpty || this[0].isEmpty ) return [];
-    return List.generate( this[0].length,
-      (c) => List.generate( length, (r) => this[r][c] ) );
-  }
-}
-
 ////////////////////////////////////////////////////////
 
 const String PIECE_DEF_DOC = '''
@@ -132,17 +124,18 @@ class Board {
     //0      3     5    6    7     9    10   11   12   13   14   15
     "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---",
     "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
-  ].map( (s) => s.split(',') ).toList().transpose();
+  ].map( (s) => s.split(',') ).toList();
 
   String render() {
     return List.generate( height + 1, (y) {
-        return List.generate( width + 1, (x) {
-            return Board.ELEMS[
-              ( ( at(x+0,y+0) != at(x+0,y-1) )? 1: 0 ) |
-              ( ( at(x+0,y-1) != at(x-1,y-1) )? 2: 0 ) |
-              ( ( at(x-1,y-1) != at(x-1,y+0) )? 4: 0 ) |
-              ( ( at(x-1,y+0) != at(x+0,y+0) )? 8: 0 ) ];
-        }).transpose().map((e) => e.join(''));
+        var codes = List.generate( width + 1, (x) {
+                       return ( ( at(x+0,y+0) != at(x+0,y-1) )? 1: 0 ) |
+                              ( ( at(x+0,y-1) != at(x-1,y-1) )? 2: 0 ) |
+                              ( ( at(x-1,y-1) != at(x-1,y+0) )? 4: 0 ) |
+                              ( ( at(x-1,y+0) != at(x+0,y+0) )? 8: 0   );
+                    });
+        return ELEMS.map( (elem) => codes.map( (c) => elem[c] ) ).
+                     map((e) => e.join(''));
     }).expand( (l) => l ).join("\n");
   }
 

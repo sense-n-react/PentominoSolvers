@@ -63,17 +63,11 @@ type Piece(id: char, figDef: Fig, next: Piece option) =
 type Board(width: int, height: int) as self =
     let cells = Array.init height (fun _ -> Array.create width ' ' )
 
-    static let rec transpose = function
-        | (_::_)::_ as M ->
-             List.map List.head M :: transpose (List.map List.tail M)
-        | _ -> []
-
     static let ELEMS =
         [ "    ,,,+---,,----,+   ,+---,,+---,|   ,+---,+   ,+---,+   ,+---";
           "    ,,,    ,,    ,    ,    ,,|   ,|   ,|   ,|   ,|   ,|   ,|   "
         ]
         |> List.map (fun s -> s.Split ',' |> Array.toList )
-        |> transpose
 
     do
         if width * height = 64 then
@@ -112,13 +106,14 @@ type Board(width: int, height: int) as self =
     //         8
     member bd.Render() =
        [0..bd.H] |> List.map (fun y ->
-         [0..bd.W] |> List.map (fun x ->
-           ELEMS[ (if bd.At (x+0) (y+0) <> bd.At (x+0) (y-1) then 1 else 0)+
-                  (if bd.At (x+0) (y-1) <> bd.At (x-1) (y-1) then 2 else 0)+
-                  (if bd.At (x-1) (y-1) <> bd.At (x-1) (y+0) then 4 else 0)+
-                  (if bd.At (x-1) (y+0) <> bd.At (x+0) (y+0) then 8 else 0) ]
+         let codes = [0..bd.W] |> List.map (fun x ->
+           (if bd.At (x+0) (y+0) <> bd.At (x+0) (y-1) then 1 else 0)+
+           (if bd.At (x+0) (y-1) <> bd.At (x-1) (y-1) then 2 else 0)+
+           (if bd.At (x-1) (y-1) <> bd.At (x-1) (y+0) then 4 else 0)+
+           (if bd.At (x-1) (y+0) <> bd.At (x+0) (y+0) then 8 else 0)
          )
-         |> transpose |> List.map (fun e -> e |> String.concat "")
+         ELEMS |> List.map ( fun elem -> codes |> List.map ( fun c -> elem[c] )
+                                               |> String.concat ""  )
        )
        |> List.concat |> String.concat "\n"
 
