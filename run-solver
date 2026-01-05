@@ -119,6 +119,10 @@ Lang :Scala  do |l|
   "#{scala} compile #{l.src} && #{scala} run #{l.src} -- #{l.o}"
 end
 
+Lang :Prolog, 'spl' do |l|
+  "swipl #{l.src} #{l.o}"
+end
+
 ###########################################################
 
 BEGIN {

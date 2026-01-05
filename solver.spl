@@ -1,0 +1,251 @@
+% -*- coding: utf-8 -*-
+%
+% Pentomino Puzzle Solver With Prolog (SWI-Prolog)
+%
+
+:- module( pentomino, [main/0] ).
+
+:- dynamic w/1.
+:- dynamic h/1.
+:- dynamic solution_id/1.
+:- dynamic piece_figs/2.
+:- dynamic pieces/1.
+:- dynamic dbg_flag/0.
+
+w(6).
+h(10).
+
+% =========================
+% Piece documentation
+% =========================
+
+piece_doc([
+    '+-------+-------+-------+-------+-------+-------+',
+    '|       |   I   |  L    |  N    |       |       |',
+    '|   F F |   I   |  L    |  N    |  P P  | T T T |',
+    '| F F   |   I   |  L    |  N N  |  P P  |   T   |',
+    '|   F   |   I   |  L L  |    N  |  P    |   T   |',
+    '|       |   I   |       |       |       |       |',
+    '+-------+-------+-------+-------+-------+-------+',
+    '|       | V     | W     |   X   |    Y  | Z Z   |',
+    '| U   U | V     | W W   | X X X |  Y Y  |   Z   |',
+    '| U U U | V V V |   W W |   X   |    Y  |   Z Z |',
+    '|       |       |       |       |    Y  |       |',
+    '+-------+-------+-------+-------+-------+-------+'
+]).
+
+% =========================
+% rotate / flip
+% =========================
+
+normalize( Fig, Norm ) :-
+    maplist( swap_xy, Fig, YXs ),
+    sort( YXs, Sorted ),
+    Sorted = [ (Y0,X0) | _ ],
+    maplist( shift_and_swap(X0,Y0), Sorted, Norm ).
+
+swap_xy( (X,Y), (Y,X) ).
+shift_and_swap( X0,Y0, (Y,X), (NX,NY) ) :-  NX is X-X0,  NY is Y-Y0.
+
+rotate_matrix( [
+    [[ 1,0],[0, 1]], [[0, 1],[-1,0]], [[-1,0],[0,-1]], [[0,-1],[ 1,0]],
+    [[-1,0],[0, 1]], [[0, 1],[ 1,0]], [[ 1,0],[0,-1]], [[0,-1],[-1,0]] ] ).
+
+apply_mat([[A,B],[C,D]], (X,Y), (U,V)) :-  U is A*X+B*Y,  V is C*X+D*Y.
+
+all_figs(Base, Figs) :-
+    rotate_matrix( Mats ),
+    findall( Norm,
+        ( member( M, Mats ),
+          maplist( apply_mat(M), Base, Tmp ),
+          normalize( Tmp, Norm )
+        ), All),
+    sort( All, Figs ).
+
+% =========================
+% Initialization
+% =========================
+
+init_pieces :-
+    retractall( piece_figs(_,_) ),
+    retractall( pieces(_) ),
+    piece_doc( Lines ),
+    findall( pt( ID, X, Y ),
+        ( nth0( Y, Lines, Line ),
+          atom_codes( Line, Codes ),
+          nth0( X2, Codes, Code ),
+          X is X2 // 2,
+          Code >= 65, Code =< 90,
+          char_code( ID, Code )
+        ), Raw),
+    setof(ID, X^Y^member( pt( ID, X, Y ), Raw ), Pieces ),
+    assertz(pieces( Pieces ) ),
+    forall(member( ID, Pieces ),
+        ( findall( (X,Y), member(pt(ID,X,Y), Raw ), Base ),
+          all_figs( Base, Figs ),
+          ( ID == 'F' -> limit_symmetry( Figs, Limited )
+          ; Limited = Figs ),
+          assertz( piece_figs( ID, Limited ) )
+        )),
+    ( dbg_flag -> show_figs ; true ).
+
+limit_symmetry(Figs, Limited) :-
+    w(W), h(H),
+    ( W =:= H
+    -> Figs = [One|_], Limited = [One]
+    ;  Figs = [A,B|_], Limited = [A,B]
+    ).
+
+show_figs :-
+    piece_figs( ID, Figs ),
+    length( Figs, N ),
+    format( "~w : (~d)~n", [ID, N] ),
+    forall(member( F, Figs ),
+        format("  ~w~n",[F] ) ),
+    fail.
+show_figs.
+
+init_board(Board) :-
+    w(W), h(H),
+    ( W*H =:= 64
+    -> MX is W//2,  MY is H//2,
+       X0 is MX-1,  Y0 is MY-1,
+       Board = [ (X0, Y0, hole),
+                 (X0, MY, hole),
+                 (MX, Y0, hole),
+                 (MX, MY, hole)]
+    ;  Board = [] ).
+
+% =========================
+% Solver
+% =========================
+
+solve( [], Board, _ ) :-
+    retract( solution_id( N ) ),
+    N1 is N + 1,
+    assertz( solution_id( N1 ) ),
+    h(H),
+    ( N1 > 1
+      -> Lines is 2*H+3, format( '~c[~dA', [27, Lines] )
+      ; true
+    ),
+    render( Board ),
+    format( "~d~n", [ N1 ]),
+    fail.
+
+solve( Pieces, Board, StartY ) :-
+    find_space( Board, StartY, TX, TY ),
+    select( ID, Pieces, Rest ),
+    piece_figs( ID, Figs ),
+    member( Fig, Figs ),
+    relocate_and_check( Fig, TX, TY, Board, Placed ),
+    tag_list( Placed, ID, Tagged ),
+    append( Tagged, Board, NewBoard ),
+    solve( Rest, NewBoard, TY ).          % call recursively
+
+find_space( Board, StartY, X, Y ) :-
+    h( H ), w( W ),
+    MaxY is H - 1,
+    MaxX is W - 1,
+    between( StartY, MaxY, Y ),
+    between( 0, MaxX, X ),
+    \+ memberchk( ( X, Y, _ ), Board ),
+    !.
+
+relocate_and_check( [], _, _, _, [] ).
+relocate_and_check( [(CX, CY)|T], OX, OY, Board, [(X, Y)|RT]) :-
+    X is CX + OX,
+    Y is CY + OY,
+    w( W ), h( H ),
+    X >= 0, X < W, Y >= 0, Y < H,
+    \+ memberchk( (X, Y, _ ), Board ),
+    relocate_and_check( T, OX, OY, Board, RT ).
+
+tag_list( [], _, [] ).
+tag_list( [(X,Y)|T], ID, [(X, Y, ID)|RT]) :- tag_list(T, ID, RT).
+
+% =========================
+% Rendering (unchanged)
+% =========================
+
+get_piece_at(X,Y,Board,ID) :-
+    ( X>=0, w(W), X<W, Y>=0, h(H), Y<H ->
+        ( memberchk((X,Y,hole),Board) -> ID=' '
+        ; memberchk((X,Y,P),Board) -> ID=P
+        ; ID='.' )
+    ; ID='@' ).
+
+boundary_tops( [
+    "    ", "",     "",     "+---", "",     "----", "+   ", "+---",
+    "",     "+---", "|   ", "+---", "+   ", "+---", "+   ", "+---" ] ).
+boundary_rights( [
+    "    ", "",     "",     "    ", "",     "    ", "    ", "    ",
+    "",     "|   ", "|   ", "|   ", "|   ", "|   ", "|   ", "|   " ] ).
+
+boundary_elem( B, Top, Right ) :-
+    boundary_tops( Ts ),
+    boundary_rights( Rs ),
+    nth0( B, Ts, Top ),
+    nth0( B, Rs, Right ).
+
+cell_boundary( X, Y, Board, B ) :-
+    Y1 is Y-1, X1 is X-1,
+    get_piece_at( X,  Y,  Board, BR ),
+    get_piece_at( X,  Y1, Board, TR ),
+    get_piece_at( X1, Y1, Board, TL ),
+    get_piece_at( X1, Y,  Board, BL ),
+    ( BR \= TR -> B1 = 1 ; B1 = 0 ),
+    ( TR \= TL -> B2 = 2 ; B2 = 0 ),
+    ( TL \= BL -> B4 = 4 ; B4 = 0 ),
+    ( BL \= BR -> B8 = 8 ; B8 = 0 ),
+    B is B1 + B2 + B4 + B8.
+
+render( Board ) :-
+    w( W ), h( H ),
+    forall( between( 0, H, Y ), (
+        forall( between( 0, W, X ), (
+            cell_boundary( X, Y, Board, B ),
+            boundary_elem( B, TopStr, _ ),
+            format( '~s', [ TopStr ] )
+        ) ), nl,
+        forall( between( 0, W, X ), (
+            cell_boundary( X, Y, Board, B ),
+            boundary_elem( B, _, RightStr ),
+            format( '~s', [ RightStr ] )
+        ) ), nl
+    ) ).
+
+% =========================
+% Main
+% =========================
+
+parse_args( [] ).
+parse_args( [Arg|T] ) :-
+    ( Arg == '--debug' -> assertz( dbg_flag )
+    ; sub_atom( Arg, B, 1, A, 'x' ) ->
+        sub_atom( Arg, 0, B, _, WA ),
+        sub_atom( Arg, _, A, 0, HA),
+        atom_number( WA, W ),
+        atom_number( HA, H ),
+        ( (W * H =:= 60 ; W * H =:= 64)
+        ->
+          retractall( w(_) ), assertz( w(W) ),
+          retractall( h(_) ), assertz( h(H) )
+        ; true
+        )
+    ; true ),
+    parse_args(T).
+
+main :-
+    retractall( dbg_flag ),
+    retractall( solution_id(_) ),
+    assertz( solution_id(0) ),
+    current_prolog_flag( argv, Args ),
+    parse_args( Args ),
+    init_board( Board ),
+    init_pieces,
+    pieces( Pieces ),
+    ( solve( Pieces, Board, 0) ; true ),
+    halt.
+
+:- initialization( main ).
