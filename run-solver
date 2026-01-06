@@ -120,7 +120,11 @@ Lang :Scala  do |l|
 end
 
 Lang :Prolog, 'spl' do |l|
-  "swipl #{l.src} #{l.o}"
+  if Gem.win_platform?
+    "swipl #{l.src} #{l.o} | cat"
+  else
+    "swipl #{l.src} #{l.o}"
+  end
 end
 
 ###########################################################
