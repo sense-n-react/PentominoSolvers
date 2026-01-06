@@ -3,7 +3,7 @@
 % Pentomino Puzzle Solver With Prolog (SWI-Prolog)
 %
 
-:- module( pentomino, [main/0] ).
+:- module( pentomino, [entry/0] ).
 
 :- dynamic w/1.
 :- dynamic h/1.
