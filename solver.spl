@@ -236,7 +236,7 @@ parse_args( [Arg|T] ) :-
     ; true ),
     parse_args(T).
 
-main :-
+entry :-
     retractall( dbg_flag ),
     retractall( solution_id(_) ),
     assertz( solution_id(0) ),
@@ -246,6 +246,6 @@ main :-
     init_pieces,
     pieces( Pieces ),
     ( solve( Pieces, Board, 0) ; true ),
-    halt.
+    halt(0).
 
-:- initialization( main ).
+:- initialization( entry, main ).
