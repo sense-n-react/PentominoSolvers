@@ -52,7 +52,7 @@ $ ./run-solver --all
 | Kotlin     | Go         | Rust   | Swift    | LISP  |
 | Crystal    | Elixir     | F#     | D        | Dart  |
 | Zig        | Nim        | Pascal | Bash     | VB    |
-| Scala      | Prolog     |        |          |       |
+| Scala      | Prolog     | Haskell|          |       |
 
 > More languages may be added over time.
 
