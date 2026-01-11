@@ -127,6 +127,9 @@ Lang :Prolog, 'spl' do |l|
   end
 end
 
+Lang :Haskell, 'hs' do |l|
+    "stack ghc -- -O2 -o #{l.src}.out #{l.src} && ./#{l.src}.out #{l.o}"
+end
 ###########################################################
 
 BEGIN {
