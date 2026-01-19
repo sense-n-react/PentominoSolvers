@@ -128,19 +128,24 @@ Lang :Prolog, 'spl' do |l|
 end
 
 Lang :Haskell, 'hs' do |l|
-    "stack ghc -- -O2 -o #{l.src}.out #{l.src} && ./#{l.src}.out #{l.o}"
+  "stack ghc -- -O2 -o #{l.src}.out #{l.src} && ./#{l.src}.out #{l.o}"
 end
+
+Lang :OCaml, 'ml' do |l|
+  "ocamlc -o #{l.src}.out #{l.src} && ./#{l.src}.out #{l.o}"
+end
+
 ###########################################################
 
 BEGIN {
   LANG_DEF = []
-  Lang     = Struct.new( 'Lang', :name, :prog, :src, :o )
+  Lang     = Struct.new( 'Lang', :name, :prog, :src, :ext, :o )
 
   def Lang name, ext = nil, **o, &block
     ext ||= name.to_s.downcase
     base = o[:base] || 'solver'
     prog = block    || Proc.new{ name.to_s.downcase }
-    LANG_DEF << Lang.new( name, prog, "#{base}.#{ext}" )
+    LANG_DEF << Lang.new( name, prog, "#{base}.#{ext}", ext )
   end
 }
 
@@ -158,7 +163,7 @@ Usage:  #{File.basename(__FILE__)} OPTION... ext...
     Lang/ext:
 #{    LANG_DEF.sort_by{ |lang| lang.name }.
         each_with_object( [[]] ) do |lang,lines|
-          lines[-1] << "#{lang.name}/#{lang.src[/[^.]+$/]}"
+          lines[-1] << "#{lang.name}/#{lang.ext}"
           lines << [lines[-1].pop]  if lines[-1].join( ', ' ).size > 60
         end.map { |words| '      ' + words.join( '  ' ) }.join( "\n" )
 }
@@ -217,7 +222,7 @@ def main()
   options()
 
   if $O[:list]
-    puts LANG_DEF.map { |lang| lang.src }
+    puts LANG_DEF.map { |lang| "#{lang.name.to_s}/#{lang.ext}" }
     exit
   end
   args = $O[:all] ?
