@@ -167,7 +167,7 @@ class Piece
       end
     end.uniq                                     # uniq
 
-    # Cal all figs that can be placed at each position on the grid
+    # Calc all figs that can be placed at each position on the grid
     @figs_at = Array.new( @@grid.size ) do |bp|
       ox, oy, oz = @@grid.bp2pt[bp]
       @org_pts.map do |pts|
