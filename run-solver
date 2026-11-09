@@ -135,6 +135,11 @@ Lang :OCaml, 'ml' do |l|
   "ocamlc -o #{l.src}.out #{l.src} && ./#{l.src}.out #{l.o}"
 end
 
+Lang :Clojure, 'clj' do |l|
+  [ "clj -M #{l.src} #{l.o}",
+    "clojure #{l.src} #{l.o}" ]
+end
+
 ###########################################################
 
 BEGIN {
