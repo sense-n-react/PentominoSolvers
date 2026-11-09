@@ -167,7 +167,7 @@ class Piece
       end
     end.uniq                                     # uniq
 
-    # Calc all figs that can be placed at each position on the grid
+    # Cal all figs that can be placed at each position on the grid
     @figs_at = Array.new( @@grid.size ) do |bp|
       ox, oy, oz = @@grid.bp2pt[bp]
       @org_pts.map do |pts|
@@ -273,7 +273,7 @@ class Grid
     axes << :z  if @depth != 1
     axes << :r  if @width == @height && @depth == 1
     @symms = ( 1 .. axes.size ).inject( [] ) do |a, n|
-      a += axes.combination(n).to_a.sort
+      a + axes.combination(n).to_a.sort
     end
   end
 
